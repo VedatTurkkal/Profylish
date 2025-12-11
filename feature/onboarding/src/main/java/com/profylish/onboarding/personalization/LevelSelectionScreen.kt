@@ -27,15 +27,15 @@ fun LevelSelectionScreen(
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-            text = "Bu alanda ne kadar deneyimlisin?",
+            text = "How much experience do you have in this field?",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
         val levels = listOf(
-            "Sıfırdan Başlıyorum" to "Bu alan hakkında hiçbir şey bilmiyorum.",
-            "Biraz Bilgim Var" to "Temel kavramları biliyorum.",
-            "Deneyimliyim" to "Bu alanda daha önce çalıştım."
+            "I'm Starting from Scratch" to "I know nothing about this field.",
+            "I Have Some Knowledge" to "I know the basic concepts.",
+            "I'm Experienced" to "I have worked in this field before."
         )
 
         levels.forEach { (title, subtitle) ->

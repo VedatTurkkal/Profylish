@@ -17,7 +17,7 @@ import com.profylish.profylish.ui.theme.ProfylishTheme // Teman burada (paket is
 import com.profylish.onboarding.OnboardingGraph // Feature modülünden geliyor
 import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint // <--- BU OLMAZSA UYGULAMA ÇÖKER!
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +25,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             ProfylishTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Padding'i navigasyona veriyoruz ki safe-area korunsun
                     MainNavigation(modifier = Modifier.padding(innerPadding))
                 }
             }
@@ -39,26 +38,22 @@ fun MainNavigation(modifier: Modifier = Modifier) {
 
     NavHost(
         navController = navController,
-        startDestination = "onboarding_flow", // Başlangıç noktası
+        startDestination = "onboarding_flow",
         modifier = modifier
     ) {
 
-        // 1. Onboarding Akışı (Feature Modülünden Geliyor)
         composable("onboarding_flow") {
             OnboardingGraph(
                 onOnboardingFinished = {
-                    // Onboarding bittiğinde Dashboard'a gönder
                     navController.navigate("dashboard") {
-                        // Geri tuşuyla onboarding'e dönülmesin
                         popUpTo("onboarding_flow") { inclusive = true }
                     }
                 }
             )
         }
 
-        // 2. Dashboard (Şimdilik test ekranı)
         composable("dashboard") {
-            Text(text = "🎉 Giriş Başarılı! Ana Sayfadasın.")
+            Text(text = "🎉 Login Successful! You are on the Home Page.")
         }
     }
 }
