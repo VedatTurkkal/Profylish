@@ -34,37 +34,31 @@ fun OccupationSearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
     onOccupationSelected: (String) -> Unit
 ) {
-    // ViewModel'den verileri dinliyoruz
     val uiState by viewModel.uiState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState() // Yazılan metni dinle
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-            text = "Ne öğrenmek istersin?",
+            text = "What would you like to learn?",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // 👇 ARAMA ÇUBUĞU (SEARCH BAR) 👇
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { query ->
-                // Her harf girişinde ViewModel'e haber veriyoruz.
-                // ViewModel içindeki "debounce" sayesinde "lazy" arama otomatik çalışacak.
                 viewModel.onSearchQueryChanged(query)
             },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Meslek ara... (örn: Engineer)") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ara") },
+            placeholder = { Text("Search for a job (e.g., Engineer, Designer, Manager)") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
         )
-        // 👆 -------------------------- 👆
 
         Spacer(modifier = Modifier.height(16.dp))
 
         if (uiState.isLoading) {
-            // Yükleniyor animasyonu
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -73,15 +67,13 @@ fun OccupationSearchScreen(
                 CircularProgressIndicator()
             }
         } else if (uiState.errorMessage != null) {
-            // Hata mesajı
             Text(
-                text = "Hata: ${uiState.errorMessage}",
+                text = "Oops: ${uiState.errorMessage}",
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // LİSTELEME
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -89,7 +81,6 @@ fun OccupationSearchScreen(
             ) {
                 items(uiState.occupations) { occupation ->
                     Button(
-                        // NOT: occupation.title kısmı senin modeline göre değişebilir (jobTitle vb.)
                         onClick = { onOccupationSelected(occupation.title) },
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.aspectRatio(1f)
