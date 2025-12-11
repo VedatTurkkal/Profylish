@@ -1,18 +1,48 @@
+# --- Android Studio / IntelliJ IDEA Ayarları (BUNLAR ÇOK ÖNEMLİ) ---
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+*.iws
+.gradle/
+build/
+*/build/
+**/build/
+
+# --- Local Configuration (Kişisel SDK yolları içerir, yüklenmemeli) ---
 local.properties
 proje_yapisi.txt
 advanced-commit-template.txt
 commit-template.txt
+
+# --- Gradle Dosyaları ---
+.gradle
+/build
+!gradle-wrapper.jar
+
+# --- Generated Files (Otomatik üretilen kodlar) ---
+/app/build/
+/core/*/build/
+/feature/*/build/
+/core/data/build/
+bin/
+gen/
+
+# --- Android ---
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# --- OS Specific (İşletim Sistemi Çöpleri) ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Kotlin / Kapt ---
+.kotlin/
+kotlin-js-store/
+.kotlin-module
