@@ -5,9 +5,9 @@ import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.model.curriculum.LearningUnit
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Order
 import javax.inject.Inject
 
-// Network modelini de burada basitçe tanımlayabiliriz veya core/network altına koyabilirsin
 @kotlinx.serialization.Serializable
 data class NetworkLearningUnit(
     val id: String,
@@ -23,13 +23,12 @@ class CurriculumRepositoryImpl @Inject constructor(
 
     override suspend fun getCurriculumForOccupation(occupationGroup: String): List<LearningUnit> {
         return try {
-            val result = supabaseClient.postgrest["curriculum"] // Tablo adı 'curriculum' olmalı
+            val result = supabaseClient.postgrest["curriculum"]
                 .select {
                     filter {
-                        // occupation_group kolonuna göre filtrele
                         eq("occupation_group", occupationGroup)
                     }
-                    order("unit_order", ascending = true)
+                    order("unit_order", order = Order.ASCENDING)
                 }
                 .decodeList<NetworkLearningUnit>()
 
