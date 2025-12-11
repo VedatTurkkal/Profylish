@@ -1,8 +1,5 @@
 package com.profylish.onboarding.welcome
 
-// ❌ SİL: import android.R (Kendi R sınıfınızı engeller)
-// ❌ SİL: import androidx.compose.material.Text (Bu Material 2'dir)
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,7 +30,6 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Geçici olarak bir İkon kullanıyoruz (Resim dosyası hatası almamak için)
         Image(
             imageVector = Icons.Default.Star,
             contentDescription = "Mascot",
@@ -44,7 +40,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Yeni bir kariyere hazırlanmanın\nen eğlenceli yolu.",
+            text = "Most excited way to prepare\nen for a new career.",
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center
         )
@@ -56,7 +52,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Start")
+            Text("Let's get started")
         }
     }
 }
