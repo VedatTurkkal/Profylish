@@ -40,7 +40,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Most excited way to prepare\nen for a new career.",
+            text = "Most excited way to prepare\n for a new career.",
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center
         )
