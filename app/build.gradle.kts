@@ -2,21 +2,20 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.kapt") // Versiyonsuz kullanım
+    alias(libs.plugins.google.hilt)
 }
 
 android {
     namespace = "com.profylish.profylish"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.profylish.profylish"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -42,6 +41,18 @@ android {
 }
 
 dependencies {
+    implementation(project(":feature:onboarding"))
+    implementation(project(":core:data"))
+    implementation(project(":core:network"))
+
+    // Hilt
+    implementation(libs.google.dagger.hilt)
+    kapt(libs.google.hilt.compiler)
+
+    // Navigation (TOML ismine uygun)
+    implementation(libs.androidx.navigation.compose)
+
+    // Core & Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -50,6 +61,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
