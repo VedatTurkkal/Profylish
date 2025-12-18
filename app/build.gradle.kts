@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.profylish.profylish"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.profylish.profylish"

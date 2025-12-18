@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.profylish.lesson"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24

@@ -8,11 +8,7 @@ plugins {
 android {
     namespace = "com.profylish.database"
 
-    // --- HATALI KISIM BURASIYDI, DÜZELTİLDİ ---
-    // Eski Hatalı: compileSdk { version = release(36) }
-    // Yeni Doğru:
-    compileSdk = 35
-    // -------------------------------------------
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24

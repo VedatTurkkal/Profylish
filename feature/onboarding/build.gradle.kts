@@ -4,13 +4,13 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.kapt") // Versiyonsuz kullanım
+    id("org.jetbrains.kotlin.kapt")
     alias(libs.plugins.google.hilt)
 }
 
 android {
     namespace = "com.profylish.onboarding"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
