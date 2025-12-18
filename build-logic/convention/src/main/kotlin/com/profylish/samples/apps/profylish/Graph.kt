@@ -1,23 +1,7 @@
-/*
- * Copyright 2025 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com.google.samples.apps.nowinandroid
+package com.profylish.samples.apps.profylish
 
 import com.android.utils.associateWithNotNull
-import com.google.samples.apps.nowinandroid.PluginType.Unknown
+import com.profylish.samples.apps.profylish.PluginType.Unknown
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -47,6 +31,7 @@ import kotlin.text.RegexOption.DOT_MATCHES_ALL
  *
  * The resulting graphs can be configured with `graph.ignoredProjects` and `graph.supportedConfigurations` properties.
  */
+@OptIn(ExperimentalStdlibApi::class)
 private class Graph(
     private val root: Project,
     private val dependencies: MutableMap<Project, Set<Pair<Configuration, Project>>> = mutableMapOf(),
@@ -67,7 +52,7 @@ private class Graph(
         seen += project.path
         plugins.putIfAbsent(
             project,
-            PluginType.entries.firstOrNull { project.pluginManager.hasPlugin(it.id) } ?: Unknown,
+            PluginType.values().firstOrNull { project.pluginManager.hasPlugin(it.id) } ?: Unknown,
         )
         dependencies.compute(project) { _, u -> u.orEmpty() }
         project.configurations
@@ -94,27 +79,27 @@ private class Graph(
  */
 internal enum class PluginType(val id: String, val ref: String, val style: String) {
     AndroidApplication(
-        id = "nowinandroid.android.application",
+        id = "profylish.android.application",
         ref = "android-application",
         style = "fill:#CAFFBF,stroke:#000,stroke-width:2px,color:#000",
     ),
     AndroidFeature(
-        id = "nowinandroid.android.feature",
+        id = "profylish.android.feature",
         ref = "android-feature",
         style = "fill:#FFD6A5,stroke:#000,stroke-width:2px,color:#000",
     ),
     AndroidLibrary(
-        id = "nowinandroid.android.library",
+        id = "profylish.android.library",
         ref = "android-library",
         style = "fill:#9BF6FF,stroke:#000,stroke-width:2px,color:#000",
     ),
     AndroidTest(
-        id = "nowinandroid.android.test",
+        id = "profylish.android.test",
         ref = "android-test",
         style = "fill:#A0C4FF,stroke:#000,stroke-width:2px,color:#000",
     ),
     Jvm(
-        id = "nowinandroid.jvm.library",
+        id = "profylish.jvm.library",
         ref = "jvm-library",
         style = "fill:#BDB2FF,stroke:#000,stroke-width:2px,color:#000",
     ),
@@ -211,7 +196,7 @@ private abstract class GraphDumpTask : DefaultTask() {
             .forEach { appendLine(it.link(indent = 2)) }
         // Classes
         appendLine()
-        PluginType.entries.forEach { appendLine(it.classDef()) }
+        PluginType.values().forEach { appendLine(it.classDef()) }
     }
 
     private fun legend() = buildString {
@@ -232,7 +217,7 @@ private abstract class GraphDumpTask : DefaultTask() {
             appendLine(it.link(indent = 2))
         }
         appendLine()
-        PluginType.entries.forEach { appendLine(it.classDef()) }
+        PluginType.values().forEach { appendLine(it.classDef()) }
     }
 
     private class Dependency(val project: String, val configuration: String, val dependency: String)
