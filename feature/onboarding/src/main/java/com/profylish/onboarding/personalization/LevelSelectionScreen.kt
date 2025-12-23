@@ -1,29 +1,24 @@
 package com.profylish.onboarding.personalization
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.profylish.onboarding.OnboardingViewModel
 
 @Composable
 fun LevelSelectionScreen(
     occupationId: String,
-    onLevelSelected: (String) -> Unit
+    occupationGroup: String, // ✅ Yeni parametre
+    onOnboardingFinished: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel() // ViewModel buraya inject ediliyor
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -42,7 +37,16 @@ fun LevelSelectionScreen(
             LevelCard(
                 title = title,
                 subtitle = subtitle,
-                onClick = { onLevelSelected(title) }
+                onClick = {
+                    // ✅ Hepsini beraber kaydediyoruz
+                    viewModel.saveUserPreference(
+                        occupation = occupationId,
+                        group = occupationGroup,
+                        level = title
+                    )
+                    // Ve Onboarding'i bitiriyoruz
+                    onOnboardingFinished()
+                }
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -62,7 +66,6 @@ fun LevelCard(title: String, subtitle: String, onClick: () -> Unit) {
             modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Sol tarafa bir ikon (Grafik) gelebilir
             Column {
                 Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)

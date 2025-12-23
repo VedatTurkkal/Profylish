@@ -10,27 +10,25 @@ plugins {
 
 android {
     namespace = "com.profylish.data"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+    kotlin {
+        jvmToolchain(17)
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+
 }
 
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))
     implementation(project(":core:network"))
+    implementation(project(":core:datastore"))
 
     implementation(libs.google.dagger.hilt)
     kapt(libs.google.hilt.compiler)

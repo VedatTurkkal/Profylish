@@ -5,16 +5,15 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.jetbrains.kotlin.serialization)
 
-    // FIX: Apply Kapt without version alias to avoid conflict
     id("org.jetbrains.kotlin.kapt")
 }
 
 android {
     namespace = "com.profylish.network"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Local Properties Logic
@@ -37,17 +36,12 @@ android {
         )
     }
 
-    // Enable BuildConfig generation
     buildFeatures {
         buildConfig = true
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        jvmToolchain(17)
     }
 }
 
@@ -57,7 +51,7 @@ dependencies {
     implementation(libs.bundles.ktor)
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation(libs.kotlinx.serialization.json)
 
     // Hilt
     implementation(libs.google.dagger.hilt)

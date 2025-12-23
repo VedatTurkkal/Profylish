@@ -32,11 +32,12 @@ fun OnboardingGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "welcome"
 
+    // Progress bar hesaplaması
     val progress by animateFloatAsState(
-        targetValue = when (currentRoute) {
-            "welcome" -> 0.1f
-            "search" -> 0.5f
-            "personalization/{occupationId}" -> 0.9f
+        targetValue = when {
+            currentRoute == "welcome" -> 0.1f
+            currentRoute == "search" -> 0.5f
+            currentRoute.startsWith("personalization") -> 0.9f
             else -> 0.0f
         }, label = "progress"
     )
@@ -70,22 +71,26 @@ fun OnboardingGraph(
 
             composable("search") {
                 OccupationSearchScreen(
-                    onOccupationSelected = { occupationId ->
-                        navController.navigate("personalization/$occupationId")
+                    onOccupationSelected = { occupationId, occupationGroup ->
+                        navController.navigate("personalization/$occupationId/$occupationGroup")
                     }
                 )
             }
 
             composable(
-                route = "personalization/{occupationId}",
-                arguments = listOf(navArgument("occupationId") { type = NavType.StringType })
+                route = "personalization/{occupationId}/{occupationGroup}",
+                arguments = listOf(
+                    navArgument("occupationId") { type = NavType.StringType },
+                    navArgument("occupationGroup") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
-                val occupationId = backStackEntry.arguments?.getString("occupationId")
+                val occupationId = backStackEntry.arguments?.getString("occupationId") ?: ""
+                val occupationGroup = backStackEntry.arguments?.getString("occupationGroup") ?: ""
+
                 LevelSelectionScreen(
-                    occupationId = occupationId ?: "",
-                    onLevelSelected = { level ->
-                        onOnboardingFinished()
-                    }
+                    occupationId = occupationId,
+                    occupationGroup = occupationGroup,
+                    onOnboardingFinished = onOnboardingFinished
                 )
             }
         }

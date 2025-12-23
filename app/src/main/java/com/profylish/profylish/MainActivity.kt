@@ -1,20 +1,21 @@
 package com.profylish.profylish
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.profylish.profylish.ui.theme.ProfylishTheme // Teman burada (paket ismine dikkat)
-import com.profylish.onboarding.OnboardingGraph // Feature modülünden geliyor
+import com.profylish.profylish.ui.theme.ProfylishTheme
+import com.profylish.onboarding.OnboardingGraph
+import com.profylish.home.HomeScreen // <-- BU IMPORT ÖNEMLİ
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -38,13 +39,15 @@ fun MainNavigation(modifier: Modifier = Modifier) {
 
     NavHost(
         navController = navController,
-        startDestination = "onboarding_flow",
+        startDestination = "onboarding_flow", // İlk açılış onboarding
         modifier = modifier
     ) {
 
+        // 1. Onboarding Akışı
         composable("onboarding_flow") {
             OnboardingGraph(
                 onOnboardingFinished = {
+                    // Onboarding bitince dashboard'a git ve geri gelinememesi için stack'i temizle
                     navController.navigate("dashboard") {
                         popUpTo("onboarding_flow") { inclusive = true }
                     }
@@ -52,8 +55,17 @@ fun MainNavigation(modifier: Modifier = Modifier) {
             )
         }
 
+        // 2. Ana Ekran (Home)
         composable("dashboard") {
-            Text(text = "🎉 Login Successful! You are on the Home Page.")
+            HomeScreen(
+                onLessonClick = { lessonId ->
+                    // Buraya derse tıklandığında ne olacağını yazacaksın.
+                    // Örneğin: navController.navigate("lesson_detail/$lessonId")
+                    Log.d("Navigation", "Derse tıklandı: $lessonId")
+                }
+                // viewModel parametresini Hilt otomatik olarak enjekte eder,
+                // buraya manuel vermene gerek yok.
+            )
         }
     }
 }
