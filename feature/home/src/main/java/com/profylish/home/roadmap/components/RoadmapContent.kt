@@ -1,15 +1,19 @@
 package com.profylish.home.roadmap.components
 
+import android.content.Context // ✅ EKLENDİ
+import android.os.Build // ✅ EKLENDİ
+import android.os.VibrationEffect // ✅ EKLENDİ
+import android.os.Vibrator // ✅ EKLENDİ
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.profylish.model.roadmap.NodeStatus
@@ -21,31 +25,12 @@ fun RoadmapContent(
     onNodeClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 👇 YENİ EKLENEN KISIM: LİSTE BOŞSA UYARI GÖSTER
-    if (nodes.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No lessons found.\n\nPossible reasons:\n1. Supabase RLS is enabled (Disable it!)\n2. No words match this career in DB.",
-                color = Color.Gray, // Arka plan koyuysa açık renk, açıksa koyu renk seçilmeli
-                textAlign = TextAlign.Center
-            )
-        }
-        return // Fonksiyondan çık, gerisini çizme
-    }
-    // 👆 -------------------------------------------
-
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
-    // Her bir satırın yüksekliği (Node + Boşluk)
     val itemHeight = 120.dp
-
-    // Zikzak sapma miktarı (Sağa/Sola ne kadar gideceği)
     val zigZagOffset = 70.dp
 
-    // İlk açılışta Aktif olan derse otomatik scroll
     LaunchedEffect(nodes) {
         val activeIndex = nodes.indexOfFirst { it.status == NodeStatus.ACTIVE }
         if (activeIndex != -1) {
@@ -93,7 +78,31 @@ fun RoadmapContent(
                     val nodeModifier = Modifier.offset(x = currentOffset)
 
                     if (node.status == NodeStatus.LOCKED) {
-                        LockedLessonNode(modifier = nodeModifier)
+                        LockedLessonNode(
+                            modifier = nodeModifier,
+                            onClick = {
+                                // 👇 GÜNCELLENDİ: Güçlü Titreşim Kodu (Vibrator Service)
+                                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+                                if (vibrator.hasVibrator()) {
+                                    // Android sürümüne göre titreşim efekti
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        // Yeni telefonlar için: 100ms süren güçlü bir "BZZT"
+                                        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                                    } else {
+                                        // Eski telefonlar için
+                                        @Suppress("DEPRECATION")
+                                        vibrator.vibrate(100)
+                                    }
+                                }
+
+                                Toast.makeText(
+                                    context,
+                                    "Locked! Complete previous level first. 🔒",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
                     } else {
                         LevelNode(
                             node = node,

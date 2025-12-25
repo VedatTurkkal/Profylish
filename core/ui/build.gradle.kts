@@ -33,13 +33,13 @@ android {
 }
 
 dependencies {
-    api(platform(libs.androidx.compose.bom))
-    api(libs.androidx.compose.ui.tooling)
-    api(libs.androidx.compose.material3)
-    api(libs.androidx.compose.foundation)
-    api(libs.androidx.compose.material.icons.extended)
-    api(libs.androidx.compose.ui.text)
-    api(libs.androidx.compose.ui.text.google.fonts)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

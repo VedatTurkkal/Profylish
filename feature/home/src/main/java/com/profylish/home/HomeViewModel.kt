@@ -31,13 +31,11 @@ class HomeViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                // 1. Kullanıcı tercihlerini (Tüm objeyi) çek
+                // 1. Kullanıcı tercihlerini DataStore'dan çek
                 val userPrefs = userDataRepository.userData.first()
 
-                // ✅ ARTIK GRUP İSMİNİ KULLANIYORUZ
                 val groupToSearch = userPrefs.occupationGroup
-
-                // Eğer grup yoksa (eski veri vs.) fallback olarak ID'yi (meslek adını) kullan
+                // Eğer grup varsa onu, yoksa occupationId'yi (meslek adını) kullan
                 val searchTerm = if (!groupToSearch.isNullOrBlank()) groupToSearch else userPrefs.occupationId
 
                 if (searchTerm.isNullOrBlank()) {
@@ -45,12 +43,14 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
 
-                // 2. Repository'e arama terimini (Grup veya Ad) gönder
+                // 2. Yol haritasını oluştur
                 val realNodes = curriculumRepository.generateRoadmap(searchTerm)
 
+                // 3. UI State'i güncelle
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
+                        profession = searchTerm, // <-- KRİTİK: Mesleği buraya kaydediyoruz
                         level = 1,
                         gems = 150,
                         hearts = 5,

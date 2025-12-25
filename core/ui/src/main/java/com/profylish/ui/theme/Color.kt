@@ -1,4 +1,4 @@
-package com.profylish.ui
+package com.profylish.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -218,7 +218,7 @@ val surfaceContainerDarkHighContrast = Color(0xFF2B3133)
 val surfaceContainerHighDarkHighContrast = Color(0xFF363C3E)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF424849)
 
-
+val ProfylishBlue = Color(0xFF29B6F6)
 
 
 

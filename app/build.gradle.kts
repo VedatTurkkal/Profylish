@@ -19,7 +19,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Duplicate file hatası için eklediğimiz blok
     packaging {
         resources {
             pickFirst("META-INF/gradle/incremental.annotation.processors")
@@ -46,17 +45,19 @@ android {
 dependencies {
     implementation(libs.charty)
 
-    implementation(project(":feature:home"))
     implementation(project(":core:ui"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:lesson"))
     implementation(project(":feature:onboarding"))
     implementation(project(":core:data"))
+    implementation(project(":core:model"))
     implementation(project(":core:network"))
 
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.google.dagger.hilt)
     kapt(libs.google.hilt.compiler)
-
     implementation(libs.androidx.navigation.compose)
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -25,7 +25,7 @@ import com.profylish.onboarding.personalization.LevelSelectionScreen
 
 @Composable
 fun OnboardingGraph(
-    onOnboardingFinished: () -> Unit
+    onOnboardingFinished: (String) -> Unit
 ) {
     val navController = rememberNavController()
 

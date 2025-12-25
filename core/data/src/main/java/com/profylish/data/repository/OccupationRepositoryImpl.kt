@@ -18,12 +18,9 @@ class OccupationRepositoryImpl @Inject constructor(
             val result = supabaseClient.postgrest["occupations"]
                 .select(columns = Columns.list("Job_Title_Clean", "SOC_Code", "ONET_Title_Group")) {
 
-                    // 👇 DÜZELTİLEN KISIM BURASI 👇
-                    // "ilike" fonksiyonunu çağırıyoruz (araya yazmıyoruz)
                     filter {
                         ilike("Job_Title_Clean", "%$query%")
                     }
-                    // 👆 ---------------------- 👆
 
                     limit(20)
                 }

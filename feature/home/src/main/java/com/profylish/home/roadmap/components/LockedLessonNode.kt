@@ -3,12 +3,12 @@ package com.profylish.home.roadmap.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,40 +19,22 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LockedLessonNode(
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {} // Kilitli derse basınca "titreme" animasyonu tetiklenebilir
+    onClick: () -> Unit // 👈 YENİ: Tıklama olayını dışarı aktarıyoruz
 ) {
-    val lockedColor = Color(0xFFE5E5E5) // Açık Gri
-    val lockedShadow = Color(0xFFCECECE) // Koyu Gri
-
     Box(
-        contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(90.dp)
-            .clickable { onClick() }
+            .size(80.dp) // Düğüm boyutu (LevelNode ile aynı olmalı)
+            .clip(CircleShape) // Yuvarlak yapıyoruz
+            .background(Color(0xFFE0E0E0)) // Gri arka plan (Kilitli rengi)
+            .clickable { onClick() }, // 👈 YENİ: Tıklanınca fonksiyonu çalıştır
+        contentAlignment = Alignment.Center
     ) {
-        // 1. Katman: Gölge (Daha ince)
-        Box(
-            modifier = Modifier
-                .size(70.dp)
-                .offset(y = 4.dp)
-                .clip(CircleShape)
-                .background(lockedShadow)
+        // Kilit İkonu
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = "Locked Level",
+            tint = Color.Gray, // İkon rengi
+            modifier = Modifier.size(32.dp)
         )
-
-        // 2. Katman: Buton
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(70.dp)
-                .clip(CircleShape)
-                .background(lockedColor)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = "Locked",
-                tint = Color(0xFFAAAAAA), // Silik kilit rengi
-                modifier = Modifier.size(28.dp)
-            )
-        }
     }
 }

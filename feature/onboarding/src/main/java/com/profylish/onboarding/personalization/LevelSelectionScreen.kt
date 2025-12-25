@@ -16,9 +16,9 @@ import com.profylish.onboarding.OnboardingViewModel
 @Composable
 fun LevelSelectionScreen(
     occupationId: String,
-    occupationGroup: String, // ✅ Yeni parametre
-    onOnboardingFinished: () -> Unit,
-    viewModel: OnboardingViewModel = hiltViewModel() // ViewModel buraya inject ediliyor
+    occupationGroup: String,
+    onOnboardingFinished: (String) -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -38,14 +38,12 @@ fun LevelSelectionScreen(
                 title = title,
                 subtitle = subtitle,
                 onClick = {
-                    // ✅ Hepsini beraber kaydediyoruz
                     viewModel.saveUserPreference(
                         occupation = occupationId,
                         group = occupationGroup,
                         level = title
                     )
-                    // Ve Onboarding'i bitiriyoruz
-                    onOnboardingFinished()
+                    onOnboardingFinished(occupationId)
                 }
             )
             Spacer(modifier = Modifier.height(16.dp))

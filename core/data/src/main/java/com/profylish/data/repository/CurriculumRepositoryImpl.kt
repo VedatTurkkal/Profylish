@@ -1,11 +1,12 @@
 package com.profylish.data.repository
 
+import com.profylish.data.mapper.toDomain // <-- Mapper eklendi
 import com.profylish.domain.repository.CurriculumRepository
-import com.profylish.model.curriculum.DictionaryWord
 import com.profylish.model.curriculum.LearningUnit
 import com.profylish.model.roadmap.RoadmapNode
 import com.profylish.model.roadmap.NodeStatus
 import com.profylish.model.roadmap.NodeType
+import com.profylish.network.model.dictionary.NetworkDictionaryEntry // <-- Network Modeli eklendi
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import javax.inject.Inject
@@ -15,37 +16,35 @@ class CurriculumRepositoryImpl @Inject constructor(
 ) : CurriculumRepository {
 
     override suspend fun getCurriculumForOccupation(occupationGroup: String): List<LearningUnit> {
-        // Eski metodun (Şimdilik boş kalabilir veya eski mantığı koruyabilirsin)
         return emptyList()
     }
 
-    // ✅ DÜZELTİLDİ: Artık List<Any> değil, List<RoadmapNode> dönüyor.
     override suspend fun generateRoadmap(occupationTitle: String): List<RoadmapNode> {
         return try {
-            // 1. Supabase'den kelimeleri çek
-            // Not: 'dictionary' tablosunda 'source_profession' sütunu olduğundan emin ol.
-            val words = supabaseClient.postgrest["dictionary"]
+            // 1. Supabase'den HAM VERİYİ (NetworkDictionaryEntry) çekiyoruz
+            // Çünkü veritabanında ID 'Int' tipinde.
+            val networkWords = supabaseClient.postgrest["dictionary"]
                 .select {
                     filter {
-                         //Meslek ismine göre arama (Büyük/küçük harf duyarsız)
+                        // Meslek ismine göre arama
                         ilike("source_profession", "%$occupationTitle%")
                     }
                 }
-                .decodeList<DictionaryWord>()
+                .decodeList<NetworkDictionaryEntry>() // <-- KRİTİK DÜZELTME BURADA
+
+            // 2. Ham veriyi Domain modeline (DictionaryWord) çeviriyoruz
+            // Burada ID 'String'e dönüşüyor.
+            val words = networkWords.map { it.toDomain() }
 
             if (words.isEmpty()) return emptyList()
 
-            // 2. Kelimeleri 7'şerli gruplara (Derslere) böl
+            // 3. Yol haritası oluşturma mantığı (Aynı kalıyor)
             val chunks = words.chunked(7)
 
-            // 3. RoadmapNode listesine çevir ve DÖNDÜR
             chunks.mapIndexed { index, _ ->
                 val level = index + 1
 
-                // İlk ders açık, diğerleri kilitli
                 val status = if (index == 0) NodeStatus.ACTIVE else NodeStatus.LOCKED
-
-                // Her 5. seviye sandık (Chest) olsun
                 val type = if (level % 5 == 0) NodeType.CHEST else NodeType.LESSON
 
                 RoadmapNode(
@@ -57,7 +56,7 @@ class CurriculumRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.e("SUPABASE_ERROR", "Veri çekilirken hata oluştu!", e)
+            android.util.Log.e("SUPABASE_ERROR", "There is an error to fetching data!", e)
             e.printStackTrace()
             emptyList()
         }
