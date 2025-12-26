@@ -1,5 +1,10 @@
 package com.profylish.lesson.quiz
 
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -16,22 +21,83 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.profylish.lesson.model.QuizUiState
 
 @Composable
 fun QuizScreen(
     onBackClick: () -> Unit,
+    onNavigateToAuth: () -> Unit,
     viewModel: QuizViewModel = hiltViewModel()
 ) {
-    // ViewModel'deki UI State'i dinliyoruz
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showQuitDialog by remember { mutableStateOf(false) }
 
-    // DİKKAT: LaunchedEffect BURADAN SİLİNDİ.
-    // ViewModel artık veriyi init bloğunda kendisi yüklüyor.
+    // Titreşim Servisi
+    val context = LocalContext.current
+    val vibrator = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator
+        }
+    }
+
+    // Intercept Back Button
+    BackHandler { showQuitDialog = true }
+
+    // Navigation Events & Vibration
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                is QuizNavigationEvent.NavigateToAuth -> onNavigateToAuth()
+                is QuizNavigationEvent.NavigateHome -> onBackClick()
+                is QuizNavigationEvent.VibrateSuccess -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
+                        vibrator.vibrate(effect)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(50)
+                    }
+                }
+                is QuizNavigationEvent.VibrateError -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val effect = VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1)
+                        vibrator.vibrate(effect)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(300)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showQuitDialog) {
+        AlertDialog(
+            onDismissRequest = { showQuitDialog = false },
+            title = { Text("Quit this session?") },
+            text = { Text("You will lose all progress in this lesson if you quit now.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showQuitDialog = false
+                    onBackClick()
+                }) {
+                    Text("QUIT", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuitDialog = false }) { Text("CANCEL") }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = Color.White
@@ -62,14 +128,21 @@ fun QuizScreen(
 
                 is QuizUiState.Success -> {
                     if (state.isLessonCompleted) {
-                        LessonCompletedView(score = state.score, onBackClick = onBackClick)
+                        val totalScore = if (state.totalQuestions > 0) state.totalQuestions * 10 else 1
+                        val passed = (state.score.toFloat() / totalScore) >= 0.7f
+
+                        LessonCompletedView(
+                            score = state.score,
+                            passed = passed,
+                            onContinueClick = { viewModel.onLessonFinished() }
+                        )
                     } else {
                         QuizContent(
                             state = state,
-                            onOptionSelected = viewModel::onOptionSelected, // Kısa yazım (Method Reference)
+                            onOptionSelected = viewModel::onOptionSelected,
                             onCheckAnswer = viewModel::onCheckAnswer,
                             onNextQuestion = viewModel::onNextQuestion,
-                            onCloseClick = onBackClick
+                            onCloseClick = { showQuitDialog = true }
                         )
                     }
                 }
@@ -78,8 +151,6 @@ fun QuizScreen(
     }
 }
 
-// ... QuizContent, QuizOptionCard ve LessonCompletedView kodları AYNI kalacak ...
-// (Tekrar kopyalamadım, mevcut kodunuzdaki alt kısımlar geçerli)
 @Composable
 fun QuizContent(
     state: QuizUiState.Success,
@@ -228,19 +299,28 @@ fun QuizOptionCard(
 }
 
 @Composable
-fun LessonCompletedView(score: Int, onBackClick: () -> Unit) {
+fun LessonCompletedView(score: Int, passed: Boolean, onContinueClick: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "🎉", style = MaterialTheme.typography.displayLarge)
+        val icon = if (passed) "🎉" else "💪"
+        val title = if (passed) "Lesson Complete!" else "Don't give up!"
+        val subtitle = if (passed) "You earned $score XP" else "You need 70% to pass. Try again!"
+        val btnColor = if (passed) Color(0xFF58CC02) else Color.Gray
+
+        Text(text = icon, style = MaterialTheme.typography.displayLarge)
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Lesson Complete!", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF58CC02))
+        Text(title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF58CC02))
         Spacer(modifier = Modifier.height(8.dp))
-        Text("You earned $score XP", style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFC800))
+        Text(subtitle, style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFC800))
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onBackClick, modifier = Modifier.fillMaxWidth(0.8f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF58CC02))) {
+        Button(
+            onClick = onContinueClick,
+            modifier = Modifier.fillMaxWidth(0.8f).height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = btnColor)
+        ) {
             Text("CONTINUE")
         }
     }

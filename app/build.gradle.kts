@@ -21,7 +21,8 @@ android {
 
     packaging {
         resources {
-            pickFirst("META-INF/gradle/incremental.annotation.processors")
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            pickFirsts.add("META-INF/gradle/incremental.annotation.processors")
         }
     }
 
@@ -49,9 +50,12 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:lesson"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:profile"))
     implementation(project(":core:data"))
     implementation(project(":core:model"))
     implementation(project(":core:network"))
+    implementation(project(":feature:auth"))
+    implementation(project(":core:domain"))
 
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.compose.material.icons.extended)

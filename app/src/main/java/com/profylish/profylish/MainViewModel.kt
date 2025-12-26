@@ -2,36 +2,28 @@ package com.profylish.profylish
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.profylish.model.user.LearnerProfile
+import com.profylish.domain.repository.UserDataRepository
+import com.profylish.model.user.UserPreferences // <-- Import
+import com.profylish.profylish.navigation.TopLevelDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor() : ViewModel() {
+class MainViewModel @Inject constructor(
+    userDataRepository: UserDataRepository
+) : ViewModel() {
 
-    private val _userProfile = MutableStateFlow(LearnerProfile())
-    val userProfile: StateFlow<LearnerProfile> = _userProfile.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            delay(1000)
-
-            _userProfile.value = LearnerProfile(
-                currentProfession = "UX Designer",
-                gems = 50,
-                streak = 1,
-                hearts = 5
-            )
+    val startDestination: StateFlow<String?> = userDataRepository.userData
+        .map { prefs: UserPreferences ->
+            if (!prefs.activeCourseId.isNullOrBlank()) {
+                TopLevelDestination.HOME.route
+            } else {
+                "onboarding_flow"
+            }
         }
-    }
-
-    fun updateProfession(newProfession: String) {
-        val current = _userProfile.value
-        _userProfile.value = current.copy(currentProfession = newProfession)
-    }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }

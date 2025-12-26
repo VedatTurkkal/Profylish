@@ -2,25 +2,18 @@ package com.profylish.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Work
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow // <-- BU IMPORT GEREKLİ
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun GamifiedTopBar(
@@ -28,131 +21,133 @@ fun GamifiedTopBar(
     gemCount: Int,
     streakCount: Int,
     heartCount: Int,
-    modifier: Modifier = Modifier,
-    onProfessionClick: () -> Unit = {}
+    availableCourses: List<String> = emptyList(),
+    onSwitchCourse: (String) -> Unit = {},
+    onAddCourse: () -> Unit = {}
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Surface(
-        modifier = modifier.fillMaxWidth().statusBarsPadding(), // statusBarsPadding burada kalmalı
         shadowElevation = 4.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = Color(0xFF141414)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // --- SOL TARAF: Meslek Seçici (Dropdown) ---
+            Box {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clickable { expanded = true }
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = professionName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Switch Course",
+                        tint = Color.Gray
+                    )
+                }
 
-            // --- SOL KISIM: Meslek Seçimi ---
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onProfessionClick() }
-                    .padding(4.dp)
-                    // KRİTİK NOKTA 1:
-                    // fill = false diyerek sadece gerektiği kadar yer kaplamasını,
-                    // ama weight(1f) ile de sağ tarafı sıkıştırmamasını sağlıyoruz.
-                    .weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Work,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    containerColor = Color(0xFF222222)
+                ) {
+                    availableCourses.forEach { course ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = course,
+                                        color = if (course == professionName) Color(0xFF58CC02) else Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (course == professionName) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(Icons.Default.Check, null, tint = Color(0xFF58CC02))
+                                    }
+                                }
+                            },
+                            onClick = {
+                                onSwitchCourse(course)
+                                expanded = false
+                            }
+                        )
+                    }
 
-                // KRİTİK NOKTA 2: Metin ayarları
-                Text(
-                    text = professionName,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    maxLines = 1, // Tek satırda kal
-                    overflow = TextOverflow.Ellipsis // Sığmazsa "..." koy
-                )
-
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    if (availableCourses.size < 3) {
+                        HorizontalDivider(color = Color.Gray)
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Add, null, tint = Color.Gray)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Add New Course", color = Color.Gray)
+                                }
+                            },
+                            onClick = {
+                                onAddCourse()
+                                expanded = false
+                            }
+                        )
+                    }
+                }
             }
 
-            // Ortadaki boşluk artık "esnek" değil, sabit bir boşluk olabilir
-            // veya weight mantığıyla kalan alanı doldurur.
-            // Sol tarafa weight(1f, fill=false) verdiğimiz için Spacer sadece arayı açar.
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // --- SAĞ KISIM: İstatistikler ---
-            // Burayı Row içine alıp `Arrangement.End` yaparsak sağa yaslanır
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                StatItem(
-                    icon = Icons.Default.Diamond,
-                    value = gemCount,
-                    color = Color(0xFF29B6F6)
+            // --- SAĞ TARAF: İstatistikler ---
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Gems
+                Icon(
+                    painter = painterResource(android.R.drawable.ic_dialog_email),
+                    contentDescription = null,
+                    tint = Color(0xFF1CB0F6),
+                    modifier = Modifier.size(20.dp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = gemCount.toString(), color = Color(0xFF1CB0F6), fontWeight = FontWeight.Bold)
 
-                StatDivider()
+                Spacer(modifier = Modifier.width(16.dp))
 
-                StatItem(
-                    icon = Icons.Default.LocalFireDepartment,
-                    value = streakCount,
-                    color = Color(0xFFFFA726)
+                // Streak
+                Icon(
+                    painter = painterResource(android.R.drawable.ic_lock_idle_charging),
+                    contentDescription = null,
+                    tint = Color(0xFFFF9600),
+                    modifier = Modifier.size(20.dp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = streakCount.toString(), color = Color(0xFFFF9600), fontWeight = FontWeight.Bold)
 
-                StatDivider()
+                Spacer(modifier = Modifier.width(16.dp))
 
-                StatItem(
-                    icon = Icons.Default.Favorite,
-                    value = heartCount,
-                    color = Color(0xFFEF5350)
+                // Hearts
+                Icon(
+                    painter = painterResource(android.R.drawable.stat_notify_error),
+                    contentDescription = null,
+                    tint = if (heartCount == 0) Color.Gray else Color(0xFFFF4B4B),
+                    modifier = Modifier.size(20.dp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = heartCount.toString(), color = if (heartCount == 0) Color.Gray else Color(0xFFFF4B4B), fontWeight = FontWeight.Bold)
             }
         }
     }
-}
-
-// ... StatItem ve StatDivider aynı kalabilir ...
-@Composable
-private fun StatItem(
-    icon: ImageVector,
-    value: Int,
-    color: Color
-) {
-    Row(
-        modifier = Modifier.padding(horizontal = 6.dp), // Padding'i biraz kıstım sığması için
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(22.dp)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 15.sp
-            )
-        )
-    }
-}
-
-@Composable
-private fun StatDivider() {
-    Divider(
-        color = MaterialTheme.colorScheme.outlineVariant,
-        modifier = Modifier
-            .height(20.dp)
-            .width(1.dp)
-    )
 }

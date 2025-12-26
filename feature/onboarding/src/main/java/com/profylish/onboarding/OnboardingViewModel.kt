@@ -12,10 +12,9 @@ class OnboardingViewModel @Inject constructor(
     private val userDataRepository: UserDataRepository
 ) : ViewModel() {
 
-    // Parametre güncellendi
-    fun saveUserPreference(occupation: String, group: String, level: String) {
+    fun saveUserPreference(jobTitle: String) {
         viewModelScope.launch {
-            userDataRepository.saveUserSelection(occupation, group, level)
+            userDataRepository.switchOrAddCourse(jobTitle)
         }
     }
 }

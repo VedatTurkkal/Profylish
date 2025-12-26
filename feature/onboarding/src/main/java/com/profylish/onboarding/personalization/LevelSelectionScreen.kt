@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+// DÜZELTME 1: Deprecated uyarısı için doğru import
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.profylish.onboarding.OnboardingViewModel
 
@@ -38,11 +39,8 @@ fun LevelSelectionScreen(
                 title = title,
                 subtitle = subtitle,
                 onClick = {
-                    viewModel.saveUserPreference(
-                        occupation = occupationId,
-                        group = occupationGroup,
-                        level = title
-                    )
+                    viewModel.saveUserPreference(jobTitle = occupationId)
+
                     onOnboardingFinished(occupationId)
                 }
             )

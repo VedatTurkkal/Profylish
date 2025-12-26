@@ -1,15 +1,24 @@
 package com.profylish.data.repository
 
-import com.profylish.data.mapper.toDomain // <-- Mapper eklendi
+import android.util.Log
+import com.profylish.data.mapper.toDomain
 import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.model.curriculum.LearningUnit
-import com.profylish.model.roadmap.RoadmapNode
 import com.profylish.model.roadmap.NodeStatus
 import com.profylish.model.roadmap.NodeType
-import com.profylish.network.model.dictionary.NetworkDictionaryEntry // <-- Network Modeli eklendi
+import com.profylish.model.roadmap.RoadmapNode
+import com.profylish.network.model.dictionary.NetworkDictionaryEntry
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import javax.inject.Inject
+import kotlinx.serialization.Serializable
+
+// Sadece grup ismini çekmek için basit bir model
+@Serializable
+data class RoadmapOccupationDto(
+    val ONET_Title_Group: String? = null
+)
 
 class CurriculumRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient
@@ -19,44 +28,80 @@ class CurriculumRepositoryImpl @Inject constructor(
         return emptyList()
     }
 
-    override suspend fun generateRoadmap(occupationTitle: String): List<RoadmapNode> {
+    override suspend fun generateRoadmap(occupationTitle: String, currentLevel: Int): List<RoadmapNode> {
         return try {
-            // 1. Supabase'den HAM VERİYİ (NetworkDictionaryEntry) çekiyoruz
-            // Çünkü veritabanında ID 'Int' tipinde.
-            val networkWords = supabaseClient.postgrest["dictionary"]
+            Log.d("ROADMAP_DEBUG", "Generating roadmap for: $occupationTitle (Current Level: $currentLevel)")
+
+            // 1. ADIM (DÜZELTME): Sadece 'ONET_Title_Group' sütununu çek.
+            // Böylece 'ISCO-08' gibi null olan sütunlar gelmez ve hata oluşmaz.
+            val occupationEntry = supabaseClient.postgrest["occupations"]
+                .select(columns = Columns.list("ONET_Title_Group")) {
+                    filter { eq("Job_Title_Clean", occupationTitle) }
+                    limit(1)
+                }
+                .decodeSingleOrNull<RoadmapOccupationDto>()
+
+            val fullGroupTitle = occupationEntry?.ONET_Title_Group ?: occupationTitle
+
+            // 2. Basitleştirilmiş Arama
+            val simpleSearchKey = fullGroupTitle.split(",").first().trim()
+
+            Log.d("ROADMAP_DEBUG", "Original: '$fullGroupTitle' -> Searching for: '$simpleSearchKey'")
+
+            var networkWords = supabaseClient.postgrest["dictionary"]
                 .select {
                     filter {
-                        // Meslek ismine göre arama
-                        ilike("source_profession", "%$occupationTitle%")
+                        ilike("source_profession", "%$simpleSearchKey%")
                     }
                 }
-                .decodeList<NetworkDictionaryEntry>() // <-- KRİTİK DÜZELTME BURADA
+                .decodeList<NetworkDictionaryEntry>()
 
-            // 2. Ham veriyi Domain modeline (DictionaryWord) çeviriyoruz
-            // Burada ID 'String'e dönüşüyor.
+            Log.d("ROADMAP_DEBUG", "Found ${networkWords.size} words.")
+
+            // 3. Fallback
+            if (networkWords.isEmpty()) {
+                Log.w("ROADMAP_DEBUG", "Still empty. Switching to fallback 'General Business'.")
+                networkWords = supabaseClient.postgrest["dictionary"]
+                    .select {
+                        filter { ilike("source_profession", "%Business%") }
+                    }
+                    .decodeList<NetworkDictionaryEntry>()
+            }
+
+            // 4. Node Oluşturma
             val words = networkWords.map { it.toDomain() }
 
-            if (words.isEmpty()) return emptyList()
+            if (words.isEmpty()) {
+                Log.e("ROADMAP_DEBUG", "Roadmap generation failed. Database might be empty.")
+                return emptyList()
+            }
 
-            // 3. Yol haritası oluşturma mantığı (Aynı kalıyor)
             val chunks = words.chunked(7)
 
-            chunks.mapIndexed { index, _ ->
-                val level = index + 1
+            val nodes = chunks.mapIndexed { index, _ ->
+                val nodeLevel = index + 1
 
-                val status = if (index == 0) NodeStatus.ACTIVE else NodeStatus.LOCKED
-                val type = if (level % 5 == 0) NodeType.CHEST else NodeType.LESSON
+                val status = when {
+                    nodeLevel < currentLevel -> NodeStatus.COMPLETED
+                    nodeLevel == currentLevel -> NodeStatus.ACTIVE
+                    else -> NodeStatus.LOCKED
+                }
+
+                val type = if (nodeLevel % 5 == 0) NodeType.CHEST else NodeType.LESSON
 
                 RoadmapNode(
-                    id = level.toString(),
-                    title = "Level $level",
+                    id = nodeLevel.toString(),
+                    title = "Level $nodeLevel",
                     status = status,
                     type = type,
-                    stars = 0
+                    stars = if (status == NodeStatus.COMPLETED) 3 else 0
                 )
             }
+
+            nodes
+
         } catch (e: Exception) {
-            android.util.Log.e("SUPABASE_ERROR", "There is an error to fetching data!", e)
+            Log.e("SUPABASE_ERROR", "Error generating roadmap", e)
             e.printStackTrace()
             emptyList()
         }

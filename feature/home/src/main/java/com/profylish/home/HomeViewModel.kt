@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.domain.repository.UserDataRepository
+import com.profylish.model.user.CourseProgress
+import com.profylish.model.user.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,44 +25,52 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        loadRoadmap()
+        observeUserData()
     }
 
-    private fun loadRoadmap() {
+    private fun observeUserData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            userDataRepository.userData.collectLatest { userPrefs: UserPreferences ->
+                _uiState.update { it.copy(isLoading = true) }
 
-            try {
-                // 1. Kullanıcı tercihlerini DataStore'dan çek
-                val userPrefs = userDataRepository.userData.first()
+                try {
+                    val activeJobTitle = userPrefs.activeCourseId
 
-                val groupToSearch = userPrefs.occupationGroup
-                // Eğer grup varsa onu, yoksa occupationId'yi (meslek adını) kullan
-                val searchTerm = if (!groupToSearch.isNullOrBlank()) groupToSearch else userPrefs.occupationId
+                    if (activeJobTitle.isNullOrBlank()) {
+                        _uiState.update { it.copy(isLoading = false) }
+                        return@collectLatest
+                    }
 
-                if (searchTerm.isNullOrBlank()) {
-                    _uiState.update { it.copy(isLoading = false) }
-                    return@launch
-                }
+                    val progress = userPrefs.courses[activeJobTitle] ?: CourseProgress()
 
-                // 2. Yol haritasını oluştur
-                val realNodes = curriculumRepository.generateRoadmap(searchTerm)
-
-                // 3. UI State'i güncelle
-                _uiState.update { state ->
-                    state.copy(
-                        isLoading = false,
-                        profession = searchTerm, // <-- KRİTİK: Mesleği buraya kaydediyoruz
-                        level = 1,
-                        gems = 150,
-                        hearts = 5,
-                        nodes = realNodes
+                    val realNodes = curriculumRepository.generateRoadmap(
+                        occupationTitle = activeJobTitle,
+                        currentLevel = progress.level
                     )
+
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            profession = activeJobTitle,
+                            availableCourses = userPrefs.courses.keys.toList(), // Kurs listesini çek
+                            level = progress.level,
+                            gems = userPrefs.gems,
+                            hearts = userPrefs.hearts,
+                            nodes = realNodes
+                        )
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _uiState.update { it.copy(isLoading = false) }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update { it.copy(isLoading = false) }
             }
+        }
+    }
+
+    // Kurs değiştirme fonksiyonu
+    fun switchCourse(courseName: String) {
+        viewModelScope.launch {
+            userDataRepository.switchOrAddCourse(courseName)
         }
     }
 }

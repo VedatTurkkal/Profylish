@@ -16,7 +16,8 @@ fun NavController.navigateToLesson(levelId: String, profession: String) {
 }
 
 fun NavGraphBuilder.lessonScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToAuth: () -> Unit // <-- ADDED THIS
 ) {
     composable(
         route = "$lessonRoute/{$levelIdArg}/{$professionArg}",
@@ -25,12 +26,9 @@ fun NavGraphBuilder.lessonScreen(
             navArgument(professionArg) { type = NavType.StringType }
         )
     ) {
-        // 1. ADIM: Argümanları çekme kodlarını (getString) SİLİN.
-        // ViewModel bunları SavedStateHandle üzerinden kendisi alıyor.
-
-        // 2. ADIM: QuizScreen çağrısını güncelleyin (parametre göndermeyin)
         QuizScreen(
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
+            onNavigateToAuth = onNavigateToAuth // <-- PASSED HERE
         )
     }
 }

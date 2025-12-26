@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    // If you use Hilt in this module, include these:
-    // alias(libs.plugins.google.hilt)
-    // id("org.jetbrains.kotlin.kapt")
+    alias(libs.plugins.jetbrains.kotlin.serialization)
+    alias(libs.plugins.jetbrains.kotlin.kapt)
+    alias(libs.plugins.google.hilt)
 }
 
 android {
@@ -34,12 +34,12 @@ dependencies {
     implementation(project(":core:model"))
 
     implementation(libs.google.dagger.hilt)
+    kapt(libs.google.hilt.compiler)
     implementation(libs.javax.inject)
-    implementation(libs.androidx.datastore.preferences.v100)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.serialization.json)
 
-    // Add other dependencies as needed
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

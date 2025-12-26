@@ -1,11 +1,9 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-
-    // CHANGE THIS:
-    id("org.jetbrains.kotlin.kapt")
-
+    alias(libs.plugins.jetbrains.kotlin.kapt)
     alias(libs.plugins.google.hilt)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
 }
 
 android {
@@ -33,6 +31,9 @@ dependencies {
     implementation(libs.google.dagger.hilt)
     kapt(libs.google.hilt.compiler)
 
+    implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.androidx.room.ktx)
     implementation(libs.bundles.supabase)
 
     implementation(libs.androidx.core.ktx)

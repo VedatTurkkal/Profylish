@@ -7,5 +7,5 @@ interface CurriculumRepository {
 
     suspend fun getCurriculumForOccupation(occupationGroup: String): List<LearningUnit>
 
-    suspend fun generateRoadmap(occupationTitle: String): List<RoadmapNode>
+    suspend fun generateRoadmap(occupationTitle: String, currentLevel: Int): List<RoadmapNode>
 }
