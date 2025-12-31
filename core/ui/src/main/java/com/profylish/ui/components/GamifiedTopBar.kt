@@ -1,7 +1,10 @@
 package com.profylish.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -13,7 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.sp
+import com.profylish.ui.R
 
 @Composable
 fun GamifiedTopBar(
@@ -28,48 +36,54 @@ fun GamifiedTopBar(
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
-        shadowElevation = 4.dp,
-        color = Color(0xFF141414)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .height(72.dp),
+        shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.primary,
+        shape = RoundedCornerShape(24.dp)
     ) {
-        Row(
+        Column (
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.Start
         ) {
-            // --- SOL TARAF: Meslek Seçici (Dropdown) ---
             Box {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clickable { expanded = true }
-                        .padding(4.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable { expanded = true }
+                            .padding(8.dp)
+                            .width(50.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = professionName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Switch Course",
-                        tint = Color.Gray
-                    )
+                    StatsTopBar(heartCount, gemCount, streakCount)
                 }
 
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    containerColor = Color(0xFF222222)
+                    modifier = Modifier.background(Color(0xFF222222))
                 ) {
                     availableCourses.forEach { course ->
                         DropdownMenuItem(
@@ -111,43 +125,12 @@ fun GamifiedTopBar(
                     }
                 }
             }
-
-            // --- SAĞ TARAF: İstatistikler ---
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Gems
-                Icon(
-                    painter = painterResource(android.R.drawable.ic_dialog_email),
-                    contentDescription = null,
-                    tint = Color(0xFF1CB0F6),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = gemCount.toString(), color = Color(0xFF1CB0F6), fontWeight = FontWeight.Bold)
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Streak
-                Icon(
-                    painter = painterResource(android.R.drawable.ic_lock_idle_charging),
-                    contentDescription = null,
-                    tint = Color(0xFFFF9600),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = streakCount.toString(), color = Color(0xFFFF9600), fontWeight = FontWeight.Bold)
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Hearts
-                Icon(
-                    painter = painterResource(android.R.drawable.stat_notify_error),
-                    contentDescription = null,
-                    tint = if (heartCount == 0) Color.Gray else Color(0xFFFF4B4B),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = heartCount.toString(), color = if (heartCount == 0) Color.Gray else Color(0xFFFF4B4B), fontWeight = FontWeight.Bold)
-            }
         }
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun GamifiedTopBarPreview(){
+    GamifiedTopBar("Software Engineer", 500, 2, 5)
 }

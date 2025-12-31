@@ -8,17 +8,17 @@ data class RoadmapNode(
     val title: String,
     val status: NodeStatus,
     val type: NodeType = NodeType.LESSON,
-    val stars: Int = 0 // Tamamlanan derslerdeki başarı (0-3)
+    val stars: Int = 0
 )
 
 enum class NodeStatus {
-    LOCKED,     // Gri, tıklanamaz
-    ACTIVE,     // Renkli, animasyonlu, bir sonraki ders
-    COMPLETED   // Altın rengi, tamamlanmış
+    LOCKED,
+    ACTIVE,
+    COMPLETED
 }
 
 enum class NodeType {
-    LESSON,     // Standart yuvarlak ders
-    CHEST,      // Ödül sandığı
-    MILESTONE   // Büyük bitiş sınavı (Kupa vs.)
+    LESSON,
+    CHEST,
+    MILESTONE
 }

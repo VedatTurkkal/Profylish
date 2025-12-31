@@ -252,27 +252,44 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
+enum class ThemeContrast {
+    Normal,
+    Medium,
+    High
+}
+
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
-    content: @Composable() () -> Unit
+    contrast: ThemeContrast = ThemeContrast.Normal,
+    content: @Composable () -> Unit
 ) {
-  val colorScheme = when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-          val context = LocalContext.current
-          if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      
-      darkTheme -> darkScheme
-      else -> lightScheme
-  }
+    val context = LocalContext.current
 
-  MaterialTheme(
-    colorScheme = colorScheme,
-    typography = AppTypography,
-    content = content
-  )
+    val colorScheme = when {
+        dynamicColor &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                contrast == ThemeContrast.Normal -> {
+            if (darkTheme) {
+                dynamicDarkColorScheme(context)
+            } else {
+                dynamicLightColorScheme(context)
+            }
+        }
+
+        darkTheme && contrast == ThemeContrast.High -> highContrastDarkColorScheme
+        darkTheme && contrast == ThemeContrast.Medium -> mediumContrastDarkColorScheme
+        darkTheme -> darkScheme
+
+        !darkTheme && contrast == ThemeContrast.High -> highContrastLightColorScheme
+        !darkTheme && contrast == ThemeContrast.Medium -> mediumContrastLightColorScheme
+        else -> lightScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = AppTypography,
+        content = content
+    )
 }
-

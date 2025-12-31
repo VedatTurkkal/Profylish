@@ -1,5 +1,6 @@
 package com.profylish.lesson.quiz
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -23,11 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.profylish.lesson.model.QuizUiState
 
+@SuppressLint("MissingPermission") // Manifest'e eklediysen bu annotation uyarıyı susturur
 @Composable
 fun QuizScreen(
     onBackClick: () -> Unit,
@@ -35,9 +38,10 @@ fun QuizScreen(
     viewModel: QuizViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showQuitDialog by remember { mutableStateOf(false) }
 
-    // Titreşim Servisi
+    var showQuitDialog by remember { mutableStateOf(false) }
+    var showSignUpDialog by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val vibrator = remember(context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -49,37 +53,29 @@ fun QuizScreen(
         }
     }
 
-    // Intercept Back Button
     BackHandler { showQuitDialog = true }
 
-    // Navigation Events & Vibration
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
             when (event) {
-                is QuizNavigationEvent.NavigateToAuth -> onNavigateToAuth()
+                is QuizNavigationEvent.NavigateToAuth -> showSignUpDialog = true
                 is QuizNavigationEvent.NavigateHome -> onBackClick()
                 is QuizNavigationEvent.VibrateSuccess -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
-                        vibrator.vibrate(effect)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        vibrator.vibrate(50)
-                    }
+                    // MinSDK 26 olduğu için direkt kullanabiliriz
+                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
                 }
                 is QuizNavigationEvent.VibrateError -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val effect = VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1)
-                        vibrator.vibrate(effect)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        vibrator.vibrate(300)
-                    }
+                    vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1))
                 }
             }
         }
     }
 
+    // ... (Geri kalan UI kodları aynı, değişiklik yok) ...
+    // Hataları önlemek için tam kopyalaman gerekirse eski QuizScreen kodunun UI kısmını buraya yapıştır.
+    // Yukarıdaki mantık blokları düzeltilmiştir.
+
+    // --- DIALOGLAR VE UI ---
     if (showQuitDialog) {
         AlertDialog(
             onDismissRequest = { showQuitDialog = false },
@@ -89,9 +85,7 @@ fun QuizScreen(
                 TextButton(onClick = {
                     showQuitDialog = false
                     onBackClick()
-                }) {
-                    Text("QUIT", color = MaterialTheme.colorScheme.error)
-                }
+                }) { Text("QUIT", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { showQuitDialog = false }) { Text("CANCEL") }
@@ -99,43 +93,52 @@ fun QuizScreen(
         )
     }
 
-    Scaffold(
-        containerColor = Color.White
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (val state = uiState) {
-                is QuizUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+    if (showSignUpDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSignUpDialog = false
+                onBackClick()
+            },
+            title = { Text("Save Your Progress!") },
+            text = {
+                Text("Great job! Create a free profile now to save your XP, streak, and league ranking permanently.", textAlign = TextAlign.Start)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSignUpDialog = false
+                        onNavigateToAuth()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1CB0F6))
+                ) { Text("Create Profile", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showSignUpDialog = false
+                    onBackClick()
+                }) { Text("Maybe Later", color = Color.Gray) }
+            }
+        )
+    }
 
+    Scaffold(containerColor = Color.White) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when (val state = uiState) {
+                is QuizUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 is QuizUiState.Error -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "⚠️ ${state.message}",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Text("⚠️ ${state.message}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                         Button(onClick = onBackClick) { Text("Go Back") }
                     }
                 }
-
                 is QuizUiState.Success -> {
                     if (state.isLessonCompleted) {
                         val totalScore = if (state.totalQuestions > 0) state.totalQuestions * 10 else 1
                         val passed = (state.score.toFloat() / totalScore) >= 0.7f
-
-                        LessonCompletedView(
-                            score = state.score,
-                            passed = passed,
-                            onContinueClick = { viewModel.onLessonFinished() }
-                        )
+                        LessonCompletedView(score = state.score, passed = passed, onContinueClick = { viewModel.onLessonFinished() })
                     } else {
                         QuizContent(
                             state = state,
@@ -151,6 +154,7 @@ fun QuizScreen(
     }
 }
 
+// ... (QuizContent ve LessonCompletedView aynı kalacak) ...
 @Composable
 fun QuizContent(
     state: QuizUiState.Success,
@@ -165,7 +169,6 @@ fun QuizContent(
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // HEADER
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -181,7 +184,6 @@ fun QuizContent(
             )
         }
 
-        // BODY
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -208,7 +210,6 @@ fun QuizContent(
             }
         }
 
-        // FOOTER
         val footerColor = if (state.isAnswerChecked) {
             if (state.isAnswerCorrect) Color(0xFFD7FFB8) else Color(0xFFFFDFE0)
         } else {

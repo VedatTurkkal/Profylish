@@ -7,13 +7,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -42,42 +40,30 @@ fun StatsTopBar(
     streak: Int,
     modifier: Modifier = Modifier
 ) {
-    CenterAlignedTopAppBar(
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = Color.White
-        ),
-        title = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp), // Kenarlardan biraz boşluk
-                horizontalArrangement = Arrangement.SpaceEvenly, // Eşit dağılım
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Kalp (Hearts)
-                StatChip(
-                    icon = Icons.Rounded.Favorite, // Rounded ikonlar daha yumuşak durur
-                    value = hearts.toString(),
-                    mainColor = Color(0xFFFF4B4B) // Canlı Kırmızı
-                )
+    Row(
+        modifier = Modifier
+            .width(240.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StatChip(
+            icon = Icons.Rounded.Favorite,
+            value = hearts.toString(),
+            mainColor = Color(0xFFFF4B4B)
+        )
 
-                // Elmas (Gems)
-                StatChip(
-                    icon = Icons.Rounded.Diamond, // Material Extended kütüphanesi gerekir
-                    value = gems.toString(),
-                    mainColor = ProfylishBlue
-                )
+        StatChip(
+            icon = Icons.Rounded.Diamond,
+            value = gems.toString(),
+            mainColor = ProfylishBlue
+        )
 
-                // Seri (Streak)
-                StatChip(
-                    icon = Icons.Rounded.LocalFireDepartment,
-                    value = streak.toString(),
-                    mainColor = Color(0xFFFF9600) // Canlı Turuncu
-                )
-            }
-        },
-        modifier = modifier
-    )
+        StatChip(
+            icon = Icons.Rounded.LocalFireDepartment,
+            value = streak.toString(),
+            mainColor = Color(0xFFFF9600)
+        )
+    }
 }
 
 @Composable
@@ -86,13 +72,11 @@ private fun StatChip(
     value: String,
     mainColor: Color
 ) {
-    // Surface ile bir "hap" (pill) şekli oluşturuyoruz
     Surface(
         shape = RoundedCornerShape(12.dp),
-        // Kenarlık rengini ana rengin biraz şeffaf hali yapıyoruz ki kibar dursun
         border = BorderStroke(2.dp, mainColor.copy(alpha = 0.2f)),
-        color = Color.White, // Arka plan beyaz kalsın, temiz görünür
-        modifier = Modifier.height(40.dp) // Yükseklik standardı
+        color = Color.White,
+        modifier = Modifier.height(40.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

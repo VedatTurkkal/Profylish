@@ -30,44 +30,41 @@ class HomeViewModel @Inject constructor(
 
     private fun observeUserData() {
         viewModelScope.launch {
-            userDataRepository.userData.collectLatest { userPrefs: UserPreferences ->
-                _uiState.update { it.copy(isLoading = true) }
-
-                try {
-                    val activeJobTitle = userPrefs.activeCourseId
-
-                    if (activeJobTitle.isNullOrBlank()) {
-                        _uiState.update { it.copy(isLoading = false) }
-                        return@collectLatest
-                    }
-
-                    val progress = userPrefs.courses[activeJobTitle] ?: CourseProgress()
-
-                    val realNodes = curriculumRepository.generateRoadmap(
-                        occupationTitle = activeJobTitle,
-                        currentLevel = progress.level
-                    )
-
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            profession = activeJobTitle,
-                            availableCourses = userPrefs.courses.keys.toList(), // Kurs listesini çek
-                            level = progress.level,
-                            gems = userPrefs.gems,
-                            hearts = userPrefs.hearts,
-                            nodes = realNodes
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    _uiState.update { it.copy(isLoading = false) }
-                }
+            userDataRepository.userData.collectLatest { userPrefs ->
+                handleUserPrefs(userPrefs)
             }
         }
     }
 
-    // Kurs değiştirme fonksiyonu
+    private suspend fun handleUserPrefs(userPrefs: UserPreferences) {
+        val activeJobTitle = userPrefs.activeCourseId ?: return
+
+        _uiState.update { it.copy(isLoading = true) }
+
+        val progress = userPrefs.courses[activeJobTitle] ?: CourseProgress()
+
+        val realNodes = curriculumRepository.generateRoadmap(
+            occupationTitle = activeJobTitle,
+            currentLevel = progress.level
+        )
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                profession = activeJobTitle,
+                availableCourses = userPrefs.courses.keys.toList(),
+
+                level = progress.level,
+                currentStage = progress.stagesCompleted,
+
+                gems = userPrefs.gems,
+                hearts = userPrefs.hearts,
+                streak = userPrefs.streak,
+                nodes = realNodes
+            )
+        }
+    }
+
     fun switchCourse(courseName: String) {
         viewModelScope.launch {
             userDataRepository.switchOrAddCourse(courseName)

@@ -48,12 +48,11 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
+    implementation(project(":feature:auth"))
 
-    // Supabase
     implementation(libs.bundles.supabase)
     implementation(libs.bundles.ktor)
 
-    // Core & Compose
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling)
@@ -70,13 +69,11 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.foundation)
 
-    // Artık TOML'da tanımlı olduğu için çalışacak:
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.ui.text)
 
-    // Navigation & Hilt
     implementation(libs.androidx.navigation.common.ktx)
-    implementation(libs.androidx.navigation.compose) // Doğru isim
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.google.dagger.hilt)

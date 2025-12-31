@@ -7,7 +7,6 @@ sealed interface QuizUiState {
     data class Error(val message: String) : QuizUiState
 
     data class Success(
-        // EKLENEN KRİTİK PARÇA: Tüm soru listesini burada tutuyoruz
         val questions: List<QuizQuestion>,
 
         val currentQuestionIndex: Int = 0,

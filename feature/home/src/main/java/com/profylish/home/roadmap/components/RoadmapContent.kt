@@ -81,16 +81,12 @@ fun RoadmapContent(
                         LockedLessonNode(
                             modifier = nodeModifier,
                             onClick = {
-                                // 👇 GÜNCELLENDİ: Güçlü Titreşim Kodu (Vibrator Service)
                                 val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
                                 if (vibrator.hasVibrator()) {
-                                    // Android sürümüne göre titreşim efekti
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                        // Yeni telefonlar için: 100ms süren güçlü bir "BZZT"
                                         vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
                                     } else {
-                                        // Eski telefonlar için
                                         @Suppress("DEPRECATION")
                                         vibrator.vibrate(100)
                                     }

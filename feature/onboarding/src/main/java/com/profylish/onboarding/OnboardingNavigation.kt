@@ -19,20 +19,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.profylish.onboarding.welcome.WelcomeScreen
-import com.profylish.onboarding.search.OccupationSearchScreen
 import com.profylish.onboarding.personalization.LevelSelectionScreen
+import com.profylish.onboarding.search.OccupationSearchScreen
+import com.profylish.onboarding.welcome.WelcomeScreen
 
 @Composable
 fun OnboardingGraph(
-    onOnboardingFinished: (String) -> Unit
+    onOnboardingFinished: (String) -> Unit,
+    onNavigateToLogin: () -> Unit
 ) {
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "welcome"
 
-    // Progress bar hesaplaması
     val progress by animateFloatAsState(
         targetValue = when {
             currentRoute == "welcome" -> 0.1f
@@ -65,7 +65,8 @@ fun OnboardingGraph(
         ) {
             composable("welcome") {
                 WelcomeScreen(
-                    onGetStarted = { navController.navigate("search") }
+                    onGetStarted = { navController.navigate("search") },
+                    onLoginClicked = onNavigateToLogin // Parametreyi buraya bağladık
                 )
             }
 

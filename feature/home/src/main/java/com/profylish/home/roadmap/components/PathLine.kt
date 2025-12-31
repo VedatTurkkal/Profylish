@@ -15,27 +15,18 @@ import androidx.compose.ui.unit.Dp
 
 @Composable
 fun PathLine(
-    startX: Dp,      // Bu item'daki çizim başlangıç X'i (Absolute)
-    endX: Dp,        // Sonraki item'daki hedef X'i (Absolute)
-    itemHeight: Dp,  // İki node merkezi arasındaki dikey mesafe
+    startX: Dp,
+    endX: Dp,
+    itemHeight: Dp,
     color: Color
 ) {
-    // Canvas varsayılan olarak parent Box kadar yer kaplar.
-    // Ancak çizimin dışarı taşmasına (bir üst satıra gitmesine) izin vermeliyiz.
-    // Bu yüzden drawPath kullanırken sınırları aşan koordinatlar vereceğiz.
-
     Canvas(
         modifier = Modifier.fillMaxSize()
     ) {
-        val startPoint = Offset(x = startX.toPx(), y = size.height / 2) // Bu kutunun merkezi
+        val startPoint = Offset(x = startX.toPx(), y = size.height / 2)
 
-        // Hedef nokta: Görsel olarak YUKARI (-Y yönü).
-        // LazyColumn item'ları birbirine değer.
-        // Bir sonraki item'ın merkezi = (Current Center Y) - itemHeight
         val endPoint = Offset(x = endX.toPx(), y = (size.height / 2) - itemHeight.toPx())
 
-        // Bezier Kontrol Noktaları (S Kıvrımı için)
-        // Dikey mesafenin yarısı kadar esnetme
         val verticalDistance = startPoint.y - endPoint.y
         val controlPoint1 = Offset(
             x = startPoint.x,
@@ -55,17 +46,13 @@ fun PathLine(
             )
         }
 
-        // ÖNEMLİ: LazyColumn item'ları bazen çizimi kesebilir (clipping).
-        // Standart Canvas modifier'ları genellikle clip yapmaz ama garanti olsun diye
-        // drawPath direkt çağrılır.
         drawPath(
             path = path,
             color = color,
             style = Stroke(
-                width = 24f, // Biraz daha kalın yol
+                width = 24f,
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round,
-                // İsteğe bağlı: Kilitli yollar için kesik çizgi
                 pathEffect = if (color == Color(0xFFE0E0E0))
                     PathEffect.dashPathEffect(floatArrayOf(40f, 20f))
                 else null

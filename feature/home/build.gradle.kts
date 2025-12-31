@@ -2,18 +2,24 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.kapt")
+    alias(libs.plugins.jetbrains.kotlin.kapt)
     alias(libs.plugins.google.hilt)
 }
 
 android {
     namespace = "com.profylish.home"
-    compileSdk = 36
+    compileSdk = 35 // 36 deneysel olabilir, 35 stabil
 
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+    }
+
+    packaging {
+        resources {
+            pickFirsts.add("META-INF/gradle/incremental.annotation.processors")
+        }
     }
 
     buildTypes {
@@ -25,14 +31,6 @@ android {
             )
         }
     }
-
-    // Güvenlik için kalabilir
-    packaging {
-        resources {
-            pickFirst("META-INF/gradle/incremental.annotation.processors")
-        }
-    }
-
     buildFeatures{
         compose = true
     }
@@ -50,6 +48,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
 
+    // EKSİK OLAN BU OLABİLİR:
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
     implementation(libs.google.dagger.hilt)
     kapt(libs.google.hilt.compiler)
 
@@ -60,7 +61,4 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }

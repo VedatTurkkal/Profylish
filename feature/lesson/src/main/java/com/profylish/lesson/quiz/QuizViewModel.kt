@@ -3,6 +3,8 @@ package com.profylish.lesson.quiz
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.profylish.domain.repository.AuthRepository
+import com.profylish.domain.repository.DictionaryRepository
 import com.profylish.domain.repository.UserDataRepository
 import com.profylish.domain.usecase.learning.GenerateDailyLessonUseCase
 import com.profylish.lesson.model.QuizUiState
@@ -11,12 +13,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Define this OUTSIDE the class so it's visible
 sealed interface QuizNavigationEvent {
     data object NavigateToAuth : QuizNavigationEvent
     data object NavigateHome : QuizNavigationEvent
@@ -28,16 +28,20 @@ sealed interface QuizNavigationEvent {
 class QuizViewModel @Inject constructor(
     private val generateDailyLessonUseCase: GenerateDailyLessonUseCase,
     private val userDataRepository: UserDataRepository,
+    private val dictionaryRepository: DictionaryRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val levelId: String = savedStateHandle.get<String>("levelId") ?: "1"
     private val profession: String = savedStateHandle.get<String>("profession") ?: "Software Engineer"
 
+    // YENİ: Bu ders ilerleme dersi mi? (Navigasyondan gelir)
+    private val isProgression: Boolean = savedStateHandle.get<Boolean>("isProgression") ?: true
+
     private val _uiState = MutableStateFlow<QuizUiState>(QuizUiState.Loading)
     val uiState: StateFlow<QuizUiState> = _uiState.asStateFlow()
 
-    // Navigation Channel
     private val _navigationEvent = Channel<QuizNavigationEvent>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
 
@@ -48,10 +52,8 @@ class QuizViewModel @Inject constructor(
     private fun loadLesson() {
         viewModelScope.launch {
             _uiState.value = QuizUiState.Loading
-
             try {
                 val questions = generateDailyLessonUseCase(profession, levelId)
-
                 if (questions.isNotEmpty()) {
                     _uiState.value = QuizUiState.Success(
                         questions = questions,
@@ -81,7 +83,6 @@ class QuizViewModel @Inject constructor(
         if (currentState is QuizUiState.Success && currentState.selectedOptionIndex != null) {
             val isCorrect = currentState.selectedOptionIndex == currentState.currentQuestion.correctAnswerIndex
 
-            // Titreşim Gönder
             viewModelScope.launch {
                 if (isCorrect) {
                     _navigationEvent.send(QuizNavigationEvent.VibrateSuccess)
@@ -103,7 +104,6 @@ class QuizViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is QuizUiState.Success) {
             val nextIndex = currentState.currentQuestionIndex + 1
-
             if (nextIndex < currentState.questions.size) {
                 _uiState.value = currentState.copy(
                     currentQuestionIndex = nextIndex,
@@ -127,24 +127,26 @@ class QuizViewModel @Inject constructor(
 
         viewModelScope.launch {
             if (percentage >= 70) {
+                // 1. XP ve Elmas her zaman verilir
                 userDataRepository.updateUserStats(xpEarned = currentState.score, gemsEarned = 15)
-                userDataRepository.unlockNextLevel()
 
-                val userPrefs = userDataRepository.userData.first()
+                // 2. KRİTİK KONTROL: Sadece "Progression" dersiyse Level/Stage artır
+                if (isProgression) {
+                    userDataRepository.unlockNextLevel()
+                }
 
-                // --- DÜZELTME BURADA ---
-                // isFirstLessonDone artık genel userPrefs'te değil,
-                // 'courses' haritasının içindeki ilgili mesleğin (profession) altında.
-                val currentCourseProgress = userPrefs.courses[profession]
+                // 3. Öğrenilen kelimeleri kaydet
+                val userId = authRepository.getCurrentUserId()
+                if (userId != null) {
+                    val wordIdsUsedInLesson = currentState.questions.mapNotNull {
+                        it.id.toString().toIntOrNull()
+                    }
+                    dictionaryRepository.markWordsAsLearned(userId, wordIdsUsedInLesson)
+                }
 
-                // Eğer veri yoksa varsayılan olarak false kabul et
-                val isFirstLessonDone = currentCourseProgress?.isFirstLessonDone ?: false
-
-                if (!isFirstLessonDone) {
-                    // İlk ders bitti, kayıt olmaya yönlendir
+                if (!authRepository.isUserLoggedIn()) {
                     _navigationEvent.send(QuizNavigationEvent.NavigateToAuth)
                 } else {
-                    // Zaten daha önce bitirmiş, eve dön
                     _navigationEvent.send(QuizNavigationEvent.NavigateHome)
                 }
             } else {

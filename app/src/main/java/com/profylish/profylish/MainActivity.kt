@@ -21,8 +21,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.profylish.auth.AuthScreen
+import com.profylish.chat.ChatScreen
 import com.profylish.home.HomeScreen
-import com.profylish.home.HomeViewModel // DİKKAT: Hata alırsan silip yeniden import et
+import com.profylish.leaderboard.LeaderboardScreen
 import com.profylish.lesson.navigation.lessonScreen
 import com.profylish.lesson.navigation.navigateToLesson
 import com.profylish.onboarding.OnboardingGraph
@@ -30,7 +31,8 @@ import com.profylish.profile.ProfileScreen
 import com.profylish.profylish.navigation.TopLevelDestination
 import com.profylish.profylish.ui.components.ProfylishBottomBar
 import com.profylish.profylish.ui.theme.ProfylishTheme
-import com.profylish.ui.components.GamifiedTopBar // Artık kullanılmıyor ama dursun
+import com.profylish.settings.SettingsScreen // Yeni Modülden Import
+import com.profylish.shop.ShopScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -39,10 +41,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ProfylishTheme {
-                val mainViewModel: MainViewModel = hiltViewModel()
-                val startRoute by mainViewModel.startDestination.collectAsStateWithLifecycle()
+            val mainViewModel: MainViewModel = hiltViewModel()
+            val startRoute by mainViewModel.startDestination.collectAsStateWithLifecycle()
+            val isDarkMode by mainViewModel.isDarkMode.collectAsStateWithLifecycle() // Tema kontrolü
 
+            ProfylishTheme(
+                darkTheme = isDarkMode // TEMA BURADAN KONTROL EDİLİYOR
+            ) {
                 if (startRoute != null) {
                     ProfylishAppContent(startDestination = startRoute!!)
                 } else {
@@ -58,17 +63,14 @@ fun ProfylishAppContent(
     startDestination: String
 ) {
     val navController = rememberNavController()
-    // HomeViewModel MainActivity seviyesinde değil, HomeScreen içinde çağrılmalı
-    // Ama BottomBar'ı yönetmek için burada state gerekebilir. Şimdilik standart tutuyoruz.
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
+
     val showBars = currentRoute in TopLevelDestination.entries.map { it.route }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        // TopBar artık HomeScreen içinde, burada sildik!
         bottomBar = {
             if (showBars) {
                 ProfylishBottomBar(
@@ -98,36 +100,65 @@ fun ProfylishAppContent(
                         navController.navigate(TopLevelDestination.HOME.route) {
                             popUpTo("onboarding_flow") { inclusive = true }
                         }
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate("auth_route")
                     }
                 )
             }
 
             composable(TopLevelDestination.HOME.route) {
                 HomeScreen(
-                    onLessonClick = { levelId, profession ->
-                        navController.navigateToLesson(levelId, profession)
+                    onLessonClick = { levelId, profession, isProgression ->
+                        navController.navigateToLesson(levelId, profession, isProgression)
                     },
                     onNavigateToSearch = {
-                        // Yeni kurs eklemek için onboarding akışını (arama ekranını) aç
                         navController.navigate("onboarding_flow")
+                    },
+                    onNavigateToChat = {
+                        navController.navigate("chat_route")
                     }
                 )
             }
 
-            composable(TopLevelDestination.LEADERBOARD.route) { /* LeaderboardScreen() */ }
-            composable(TopLevelDestination.SHOP.route) { /* ShopScreen() */ }
+            composable("chat_route") {
+                ChatScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(TopLevelDestination.LEADERBOARD.route) {
+                LeaderboardScreen()
+            }
+
+            composable(TopLevelDestination.SHOP.route) {
+                ShopScreen()
+            }
 
             composable(TopLevelDestination.PROFILE.route) {
                 ProfileScreen(
                     onNavigateToAuth = {
                         navController.navigate("auth_route")
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate("settings_route")
+                    }
+                )
+            }
+
+            // YENİ SETTINGS ROTASI
+            composable("settings_route") {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onSignOutSuccess = {
+                        navController.popBackStack() // Çıkış yapınca Profile ekranına dön
                     }
                 )
             }
 
             composable("auth_route") {
                 AuthScreen(
-                    onAuthSuccess = {
+                    onNavigateToHome = {
                         navController.popBackStack()
                     }
                 )

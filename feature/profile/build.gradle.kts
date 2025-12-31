@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.charty)
+    implementation(libs.coil.compose)
 
     implementation(libs.google.dagger.hilt)
     kapt(libs.google.hilt.compiler)

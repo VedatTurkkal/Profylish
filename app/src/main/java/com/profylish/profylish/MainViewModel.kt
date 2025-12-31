@@ -3,7 +3,7 @@ package com.profylish.profylish
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profylish.domain.repository.UserDataRepository
-import com.profylish.model.user.UserPreferences // <-- Import
+import com.profylish.model.user.UserPreferences
 import com.profylish.profylish.navigation.TopLevelDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,4 +26,9 @@ class MainViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // TEMA KONTROLÜ
+    val isDarkMode: StateFlow<Boolean> = userDataRepository.userData
+        .map { it.isDarkModeEnabled }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 }

@@ -2,9 +2,9 @@ package com.profylish.data.repository
 
 import com.profylish.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -19,7 +19,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     // DÜZELTME 2: Parametre adı 'pass' yerine 'password' yapıldı.
-    override suspend fun signUp(email: String, password: String): Result<Unit> {
+    override suspend fun signUp(email: String, password: String, username: String): Result<Unit> {
         return try {
             supabaseClient.auth.signUpWith(Email) {
                 this.email = email

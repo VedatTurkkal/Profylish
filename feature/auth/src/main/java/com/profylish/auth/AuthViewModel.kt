@@ -6,6 +6,7 @@ import com.profylish.domain.repository.AuthRepository
 import com.profylish.domain.repository.UserDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -22,6 +23,7 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val email: String = "",
     val password: String = "",
+    val username: String = "",
     val isLoginMode: Boolean = true
 )
 
@@ -45,33 +47,65 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(password = newValue) }
     }
 
+    fun onUsernameChange(newValue: String) {
+        _uiState.update { it.copy(username = newValue) }
+    }
+
     fun toggleMode() {
         _uiState.update { it.copy(isLoginMode = !it.isLoginMode) }
     }
 
-    fun submit() {
+    fun authenticate() {
         val state = _uiState.value
+
         if (state.email.isBlank() || state.password.isBlank()) return
+        if (!state.isLoginMode && state.username.isBlank()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val result = if (state.isLoginMode) {
-                authRepository.signIn(state.email, state.password)
+            if (state.isLoginMode) {
+                performLogin(state.email, state.password)
             } else {
-                authRepository.signUp(state.email, state.password)
+                performSignUp(state.email, state.password, state.username)
             }
 
-            result.onSuccess {
-                // Kayıt/Giriş sonrası veriyi restore et (Otomatik giriş hissi verir)
-                userDataRepository.restoreFromCloud()
-
-                _uiState.update { it.copy(isLoading = false) }
-                _authEvent.send(AuthEvent.AuthSuccess)
-            }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false) }
-                _authEvent.send(AuthEvent.AuthError(error.message ?: "Authentication failed"))
-            }
+            _uiState.update { it.copy(isLoading = false) }
         }
+    }
+
+    private suspend fun performLogin(email: String, pass: String) {
+        authRepository.signIn(email, pass)
+            .onSuccess {
+                try {
+                    userDataRepository.restoreFromCloud()
+                    _authEvent.send(AuthEvent.AuthSuccess)
+                } catch (_: Exception) {
+                    _authEvent.send(AuthEvent.AuthSuccess)
+                }
+            }
+            .onFailure {
+                _authEvent.send(AuthEvent.AuthError(it.message ?: "Login failed"))
+            }
+    }
+
+    private suspend fun performSignUp(email: String, pass: String, username: String) {
+        authRepository.signUp(email, pass, username)
+            .onSuccess {
+                try {
+                    delay(500)
+
+                    userDataRepository.syncLocalDataToCloud()
+
+                    userDataRepository.updateUsername(username)
+
+                    _authEvent.send(AuthEvent.AuthSuccess)
+                } catch (_: Exception) {
+                    _authEvent.send(AuthEvent.AuthSuccess)
+                }
+            }
+            .onFailure {
+                _authEvent.send(AuthEvent.AuthError(it.message ?: "Sign up failed"))
+            }
     }
 }

@@ -7,7 +7,10 @@ data class HomeUiState(
     val profession: String = "",
     val availableCourses: List<String> = emptyList(),
     val level: Int = 1,
+    val currentStage: Int = 0,
+    val maxStages: Int = 3,
     val gems: Int = 0,
-    val hearts: Int = 5,
+    val hearts: Int = 0,
+    val streak: Int = 0,
     val nodes: List<RoadmapNode> = emptyList()
 )

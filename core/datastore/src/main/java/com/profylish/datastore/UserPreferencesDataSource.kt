@@ -15,4 +15,10 @@ class UserPreferencesDataSource @Inject constructor(
     ) {
         userPreferences.updateData(transform)
     }
+
+    suspend fun clearData() {
+        userPreferences.updateData {
+            UserPreferences()
+        }
+    }
 }
