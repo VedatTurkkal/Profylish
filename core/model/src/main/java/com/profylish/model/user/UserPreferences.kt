@@ -28,12 +28,15 @@ data class UserPreferences(
 
     val courses: Map<String, CourseProgress> = emptyMap(),
 
+    @SerialName("completed_categories")
+    val completedCategories: Map<Int, Set<String>> = emptyMap(),
+
     val gems: Int = 500,
     val hearts: Int = 5,
     val streak: Int = 0,
     @SerialName("has_streak_freeze") val hasStreakFreeze: Boolean = false,
 
     @SerialName("is_vibration_enabled") val isVibrationEnabled: Boolean = true,
-    @SerialName("is_dark_mode_enabled") val isDarkModeEnabled: Boolean = false, // false = Light, true = Dark
+    @SerialName("is_dark_mode_enabled") val isDarkModeEnabled: Boolean = false,
     @SerialName("is_notifications_enabled") val isNotificationsEnabled: Boolean = true
 )

@@ -1,13 +1,13 @@
 package com.profylish.home
 
-// Gerekli Android Importları
+// Android OS ve Titreşim Importları
 import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 
-// Gerekli Compose Animation Importları
+// Compose Animasyon Importları
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -15,27 +15,25 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 
-// Gerekli Compose Foundation & UI Importları
+// Compose UI ve Layout Importları
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed // Bu import çok önemli
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-// Gerekli Material 3 Importları (Material 2 olmamalı)
+// Material 3 Importları
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 
-// Runtime Importları
+// Runtime ve Lifecycle Importları
 import androidx.compose.runtime.*
-
-// UI Helper Importları
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,16 +41,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-
-// Hilt ve ViewModel Importları
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-// Proje İçi Importlar
+// Proje içi bileşenler
 import com.profylish.home.components.LessonSelectionBottomSheet
 import com.profylish.model.roadmap.NodeStatus
 import com.profylish.model.roadmap.RoadmapNode
@@ -62,7 +57,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    // Navigasyon parametresi: levelId, profession, category (String)
+    // Navigasyon: levelId, profession, category
     onLessonClick: (String, String, String) -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToChat: () -> Unit,
@@ -70,10 +65,10 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Snackbar durumunu yönetmek için değişken (İsim çakışmasını önlemek için 'hostState' yaptık)
+    // SnackbarHostState (Hata mesajlarını göstermek için)
     val hostState = remember { SnackbarHostState() }
 
-    // Kilitli mesajı animasyonu için state
+    // Özel kilitli mesajı animasyon state'i
     var showLockedMessage by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -82,7 +77,7 @@ fun HomeScreen(
 
     var selectedLevelId by remember { mutableStateOf<String?>(null) }
 
-    // Locked mesajı görünür olduğunda 2 saniye sonra otomatik gizle
+    // Locked mesajını 2 saniye sonra otomatik kapatan mantık
     LaunchedEffect(showLockedMessage) {
         if (showLockedMessage) {
             delay(2000)
@@ -92,7 +87,7 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(hostState) }, // hostState burada kullanılıyor
+        snackbarHost = { SnackbarHost(hostState) },
         topBar = {
             GamifiedTopBar(
                 professionName = uiState.profession,
@@ -119,7 +114,7 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize()) {
 
-            // Seviyeleri 5'erli gruplara bölüyoruz
+            // Roadmap düğümlerini 5'erli ünitelere (UNIT) bölüyoruz
             val units = remember(uiState.nodes) { uiState.nodes.chunked(5) }
 
             LazyColumn(
@@ -141,7 +136,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // itemsIndexed kullanımı için import gereklidir (Yukarıda eklendi)
                     itemsIndexed(nodesInUnit) { nodeIndex, node ->
                         val offsetX = when (nodeIndex % 4) {
                             1 -> (-40).dp
@@ -164,7 +158,6 @@ fun HomeScreen(
                                         if (uiState.isVibrationEnabled) {
                                             vibrateDevice(context)
                                         }
-                                        // Custom mesajı göster
                                         showLockedMessage = true
                                     } else {
                                         selectedLevelId = node.id
@@ -176,7 +169,7 @@ fun HomeScreen(
                 }
             }
 
-            // --- CUSTOM LOCKED NOTIFICATION ---
+            // --- CUSTOM LOCKED NOTIFICATION (Aşağıdan fırlayan bildirim) ---
             AnimatedVisibility(
                 visible = showLockedMessage,
                 enter = slideInVertically(
@@ -212,8 +205,7 @@ fun HomeScreen(
                         Text(
                             text = "Locked! Complete previous levels first.",
                             color = Color.White,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
                 }
@@ -221,23 +213,23 @@ fun HomeScreen(
         }
     }
 
-    // --- BOTTOM SHEET ---
+    // --- CATEGORY SELECTION BOTTOM SHEET ---
     if (selectedLevelId != null) {
         val clickedLevelInt = selectedLevelId!!.toIntOrNull() ?: 1
 
         LessonSelectionBottomSheet(
             clickedLevelId = clickedLevelInt,
             userLevel = uiState.level,
-            completedCategories = emptySet(), // Tamamlanan kategoriler ileride eklenebilir
+            // uiState içindeki Map'ten o seviyeye ait bitmiş kategorileri çekiyoruz
+            completedCategories = uiState.completedCategoriesByLevel[clickedLevelInt] ?: emptySet(),
             onDismiss = { selectedLevelId = null },
             onCategorySelected = { category ->
                 if (uiState.hearts > 0) {
-                    // Navigasyon tetikleniyor
+                    // Navigasyon: levelId, profession, category (TERM, IDIOM vb.)
                     onLessonClick(selectedLevelId!!, uiState.profession, category)
                     selectedLevelId = null
                 } else {
                     scope.launch {
-                        // hostState burada kullanılıyor, hata vermemesi lazım
                         hostState.showSnackbar("You have no hearts left! Practice to earn or wait.")
                     }
                 }
@@ -286,12 +278,6 @@ fun LessonNodeItem(
         NodeStatus.ACTIVE -> unitColor
     }
 
-    val borderColor = when(node.status) {
-        NodeStatus.COMPLETED -> Color(0xFFE59400)
-        NodeStatus.LOCKED -> MaterialTheme.colorScheme.background
-        NodeStatus.ACTIVE -> MaterialTheme.colorScheme.background
-    }
-
     val iconTint = if (node.status == NodeStatus.LOCKED) {
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     } else {
@@ -314,7 +300,7 @@ fun LessonNodeItem(
             .background(backgroundColor)
             .border(
                 width = 4.dp,
-                color = borderColor,
+                color = MaterialTheme.colorScheme.background,
                 shape = CircleShape
             )
             .clickable { onClick() },

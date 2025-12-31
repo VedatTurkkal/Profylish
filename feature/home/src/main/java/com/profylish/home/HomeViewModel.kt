@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.domain.repository.UserDataRepository
-import com.profylish.model.roadmap.RoadmapNode // Doğru import (Senin modelin)
 import com.profylish.model.user.CourseProgress
 import com.profylish.model.user.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +43,7 @@ class HomeViewModel @Inject constructor(
 
         val progress = userPrefs.courses[activeJobTitle] ?: CourseProgress()
 
+        // Veritabanından (Supabase) mevcut ilerlemeye göre yol haritasını getir
         val realNodes = curriculumRepository.generateRoadmap(
             occupationTitle = activeJobTitle,
             currentLevel = progress.level
@@ -60,11 +60,16 @@ class HomeViewModel @Inject constructor(
                 hearts = userPrefs.hearts,
                 streak = userPrefs.streak,
                 nodes = realNodes,
-                isVibrationEnabled = userPrefs.isVibrationEnabled
+                isVibrationEnabled = userPrefs.isVibrationEnabled,
+                // UI'daki "tik" işaretlerini göstermek için Map verisini state'e aktarıyoruz
+                completedCategoriesByLevel = userPrefs.completedCategories
             )
         }
     }
 
+    /**
+     * Kurs değiştirme işlemi (Örn: Software Engineer -> Real Estate)
+     */
     fun switchCourse(courseName: String) {
         viewModelScope.launch {
             userDataRepository.switchOrAddCourse(courseName)

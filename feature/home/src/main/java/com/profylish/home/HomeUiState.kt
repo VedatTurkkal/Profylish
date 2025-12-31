@@ -13,5 +13,6 @@ data class HomeUiState(
     val hearts: Int = 0,
     val streak: Int = 0,
     val nodes: List<RoadmapNode> = emptyList(),
-    val isVibrationEnabled: Boolean = true
+    val isVibrationEnabled: Boolean = true,
+    val completedCategoriesByLevel: Map<Int, Set<String>> = emptyMap()
 )

@@ -1,4 +1,4 @@
-@file:OptIn(kotlinx.serialization.InternalSerializationApi::class) // DÜZELTME 1: En tepede olmalı!
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
 
 package com.profylish.data.repository
 
@@ -15,15 +15,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class QuizOccupationDto(
-    @SerialName("ONET_Title_Group") val onetTitleGroup: String? = null
-)
-
-// DÜZELTME 2: @SerialName kullanarak Kotlin standardına (camelCase) geçtik
-@Serializable
-data class WordProgressDto(
-    @SerialName("word_id") val wordId: Int
-)
+data class WordProgressDto(@SerialName("word_id") val wordId: Int)
 
 @Serializable
 data class InsertWordProgressDto(
@@ -36,13 +28,14 @@ class DictionaryRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient
 ) : DictionaryRepository {
 
-    override suspend fun getWordsForLevel(
+    override suspend fun getWordsForLesson(
         profession: String,
-        cefrLevel: String,
-        excludedWordIds: List<Int>
+        cefrLevel: String, // "B1", "B2", "C1", "C2" veya Onboarding metni
+        wordType: String
     ): List<DictionaryWord> {
         return try {
-            val targetCefrLevels = when (cefrLevel) {
+            // Onboarding'den gelen tecrübe seviyelerini DB seviyeleriyle eşleştiriyoruz
+            val targetLevels = when (cefrLevel) {
                 "I'm Starting from Scratch", "B1" -> listOf("B1", "B2")
                 "I Have Some Knowledge", "B2" -> listOf("B2", "C1")
                 "I'm Experienced", "C1" -> listOf("C1", "C2")
@@ -50,52 +43,34 @@ class DictionaryRepositoryImpl @Inject constructor(
                 else -> listOf("B1", "B2")
             }
 
-            val occupationEntry = supabaseClient.postgrest["occupations"]
-                .select(columns = Columns.list("ONET_Title_Group")) {
-                    filter { eq("Job_Title_Clean", profession) }
-                    limit(1)
-                }
-                .decodeSingleOrNull<QuizOccupationDto>()
-
-            val fullGroupTitle = occupationEntry?.onetTitleGroup ?: profession
-            val simpleSearchKey = fullGroupTitle.split(",").first().trim()
-
-            var result = supabaseClient.postgrest["dictionary"]
+            val result = supabaseClient.postgrest["dictionary"]
                 .select {
                     filter {
-                        ilike("source_profession", "%$simpleSearchKey%")
-                        isIn("source_cefr_level", targetCefrLevels)
-                        if (excludedWordIds.isNotEmpty()) {
-                            excludedWordIds.forEach { excludedId ->
-                                neq("id", excludedId)
-                            }
-                        }
+                        ilike("source_profession", "%$profession%")
+                        isIn("source_cefr_level", targetLevels)
+                        eq("type", wordType)
                     }
-                    limit(20)
+                    limit(15)
                 }
                 .decodeList<NetworkDictionaryEntry>()
 
+            // Eğer sonuç boşsa "Business" genel kategorisinden getir (Fallback)
             if (result.isEmpty()) {
-                result = supabaseClient.postgrest["dictionary"]
+                val fallbackResult = supabaseClient.postgrest["dictionary"]
                     .select {
                         filter {
                             ilike("source_profession", "%Business%")
-                            isIn("source_cefr_level", targetCefrLevels)
-                            if (excludedWordIds.isNotEmpty()) {
-                                excludedWordIds.forEach { excludedId ->
-                                    neq("id", excludedId)
-                                }
-                            }
+                            isIn("source_cefr_level", targetLevels)
+                            eq("type", wordType)
                         }
                         limit(10)
-                    }
-                    .decodeList<NetworkDictionaryEntry>()
+                    }.decodeList<NetworkDictionaryEntry>()
+                return fallbackResult.map { it.toDomain() }
             }
 
             result.map { it.toDomain() }
-
         } catch (e: Exception) {
-            Log.e("QUIZ_DEBUG", "Error fetching quiz data", e)
+            Log.e("QUIZ_DEBUG", "Error fetching words for $wordType: ${e.message}")
             emptyList()
         }
     }
@@ -107,9 +82,8 @@ class DictionaryRepositoryImpl @Inject constructor(
                     filter { eq("user_id", userId) }
                 }
                 .decodeList<WordProgressDto>()
-                .map { it.wordId } // Düzeltildi: .wordId
+                .map { it.wordId }
         } catch (e: Exception) {
-            Log.e("QUIZ_DEBUG", "Error fetching learned words", e)
             emptyList()
         }
     }
@@ -117,20 +91,17 @@ class DictionaryRepositoryImpl @Inject constructor(
     override suspend fun markWordsAsLearned(userId: String, wordIds: List<Int>) {
         if (wordIds.isEmpty()) return
         try {
-            val progressEntries = wordIds.map { id ->
-                InsertWordProgressDto(userId = userId, wordId = id) // Düzeltildi
-            }
-
-            supabaseClient.postgrest["user_word_progress"]
-                .upsert(
-                    value = progressEntries,
-                    onConflict = "user_id, word_id",
-                    ignoreDuplicates = true
-                )
-
-            Log.d("QUIZ_DEBUG", "Marked ${wordIds.size} words as learned.")
+            val entries = wordIds.map { InsertWordProgressDto(userId, it) }
+            supabaseClient.postgrest["user_word_progress"].upsert(entries)
         } catch (e: Exception) {
-            Log.e("QUIZ_DEBUG", "Failed to save progress", e)
+            Log.e("QUIZ_DEBUG", "Failed to mark words: ${e.message}")
         }
     }
+
+    // Geriye dönük uyumluluk için eski metot
+    override suspend fun getWordsForLevel(
+        profession: String,
+        cefrLevel: String,
+        excludedWordIds: List<Int>
+    ): List<DictionaryWord> = getWordsForLesson(profession, cefrLevel, "Term")
 }
