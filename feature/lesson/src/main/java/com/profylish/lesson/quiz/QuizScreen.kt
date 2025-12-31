@@ -6,6 +6,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,11 +28,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.profylish.lesson.model.QuizUiState
+import com.profylish.model.lesson.QuestionType
 
-@SuppressLint("MissingPermission") // Manifest'e eklediysen bu annotation uyarıyı susturur
+@SuppressLint("MissingPermission")
 @Composable
 fun QuizScreen(
     onBackClick: () -> Unit,
@@ -38,7 +42,6 @@ fun QuizScreen(
     viewModel: QuizViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     var showQuitDialog by remember { mutableStateOf(false) }
     var showSignUpDialog by remember { mutableStateOf(false) }
 
@@ -61,21 +64,25 @@ fun QuizScreen(
                 is QuizNavigationEvent.NavigateToAuth -> showSignUpDialog = true
                 is QuizNavigationEvent.NavigateHome -> onBackClick()
                 is QuizNavigationEvent.VibrateSuccess -> {
-                    // MinSDK 26 olduğu için direkt kullanabiliriz
-                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(50)
+                    }
                 }
                 is QuizNavigationEvent.VibrateError -> {
-                    vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(300)
+                    }
                 }
             }
         }
     }
 
-    // ... (Geri kalan UI kodları aynı, değişiklik yok) ...
-    // Hataları önlemek için tam kopyalaman gerekirse eski QuizScreen kodunun UI kısmını buraya yapıştır.
-    // Yukarıdaki mantık blokları düzeltilmiştir.
-
-    // --- DIALOGLAR VE UI ---
     if (showQuitDialog) {
         AlertDialog(
             onDismissRequest = { showQuitDialog = false },
@@ -95,28 +102,16 @@ fun QuizScreen(
 
     if (showSignUpDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showSignUpDialog = false
-                onBackClick()
-            },
+            onDismissRequest = { showSignUpDialog = false; onBackClick() },
             title = { Text("Save Your Progress!") },
-            text = {
-                Text("Great job! Create a free profile now to save your XP, streak, and league ranking permanently.", textAlign = TextAlign.Start)
-            },
+            text = { Text("Great job! Create a free profile now to save your XP, streak, and league ranking permanently.") },
             confirmButton = {
-                Button(
-                    onClick = {
-                        showSignUpDialog = false
-                        onNavigateToAuth()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1CB0F6))
-                ) { Text("Create Profile", fontWeight = FontWeight.Bold) }
+                Button(onClick = { showSignUpDialog = false; onNavigateToAuth() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1CB0F6))) {
+                    Text("Create Profile", fontWeight = FontWeight.Bold)
+                }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showSignUpDialog = false
-                    onBackClick()
-                }) { Text("Maybe Later", color = Color.Gray) }
+                TextButton(onClick = { showSignUpDialog = false; onBackClick() }) { Text("Maybe Later", color = Color.Gray) }
             }
         )
     }
@@ -147,6 +142,32 @@ fun QuizScreen(
                             onNextQuestion = viewModel::onNextQuestion,
                             onCloseClick = { showQuitDialog = true }
                         )
+
+                        // COMBO ANIMASYONU
+                        AnimatedVisibility(
+                            visible = state.showComboAnim,
+                            enter = scaleIn() + fadeIn(),
+                            exit = scaleOut() + fadeOut(),
+                            modifier = Modifier.align(Alignment.Center)
+                        ) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFC107)),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(8.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("🔥", fontSize = 48.sp)
+                                    Text(
+                                        "COMBO x${state.comboStreak}!",
+                                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -154,7 +175,6 @@ fun QuizScreen(
     }
 }
 
-// ... (QuizContent ve LessonCompletedView aynı kalacak) ...
 @Composable
 fun QuizContent(
     state: QuizUiState.Success,
@@ -169,21 +189,28 @@ fun QuizContent(
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
+
+        // TOP BAR
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onCloseClick) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
-            }
+            IconButton(onClick = onCloseClick) { Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray) }
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(8.dp)),
                 color = Color(0xFF58CC02),
                 trackColor = Color(0xFFE5E5E5)
             )
+            Spacer(modifier = Modifier.width(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Favorite, contentDescription = "Hearts", tint = Color(0xFFFF4B4B))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("${state.hearts}", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF4B4B))
+            }
         }
 
+        // SORU ALANI
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -191,53 +218,102 @@ fun QuizContent(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = state.currentQuestion.questionText,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF3C3C3C),
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
 
-            state.currentQuestion.options.forEachIndexed { index, optionText ->
-                QuizOptionCard(
-                    text = optionText,
-                    isSelected = state.selectedOptionIndex == index,
-                    isAnswerChecked = state.isAnswerChecked,
-                    isCorrectAnswer = index == state.currentQuestion.correctAnswerIndex,
-                    onClick = { onOptionSelected(index) }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            // SORU TİPİNE GÖRE GÖSTERİM (Dinamik)
+            when (state.currentQuestion.type) {
+
+                QuestionType.FILL_IN_THE_BLANK -> {
+                    Text("Complete the phrase:", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+                    ) {
+                        Text(
+                            text = state.currentQuestion.questionText,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(24.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    // Şıklar
+                    state.currentQuestion.options.forEachIndexed { index, optionText ->
+                        QuizOptionCard(
+                            text = optionText,
+                            isSelected = state.selectedOptionIndex == index,
+                            isAnswerChecked = state.isAnswerChecked,
+                            isCorrectAnswer = index == state.currentQuestion.correctAnswerIndex,
+                            onClick = { onOptionSelected(index) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                QuestionType.TRUE_FALSE -> {
+                    Text(
+                        text = state.currentQuestion.questionText,
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+                    )
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        state.currentQuestion.options.forEachIndexed { index, optionText ->
+                            val color = if(optionText == "True") Color(0xFF58CC02) else Color(0xFFEA2B2B)
+                            Box(modifier = Modifier.weight(1f)) {
+                                TrueFalseCard(
+                                    text = optionText,
+                                    baseColor = color,
+                                    isSelected = state.selectedOptionIndex == index,
+                                    isAnswerChecked = state.isAnswerChecked,
+                                    onClick = { onOptionSelected(index) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> { // MULTIPLE_CHOICE (Default)
+                    Text(
+                        text = state.currentQuestion.questionText,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color(0xFF3C3C3C),
+                        modifier = Modifier.padding(bottom = 32.dp)
+                    )
+                    state.currentQuestion.options.forEachIndexed { index, optionText ->
+                        QuizOptionCard(
+                            text = optionText,
+                            isSelected = state.selectedOptionIndex == index,
+                            isAnswerChecked = state.isAnswerChecked,
+                            isCorrectAnswer = index == state.currentQuestion.correctAnswerIndex,
+                            onClick = { onOptionSelected(index) }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
             }
         }
 
+        // ALT KONTROL BAR
         val footerColor = if (state.isAnswerChecked) {
             if (state.isAnswerCorrect) Color(0xFFD7FFB8) else Color(0xFFFFDFE0)
         } else {
             Color.White
         }
 
-        Column(
-            modifier = Modifier.fillMaxWidth().background(footerColor).padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().background(footerColor).padding(16.dp)) {
             if (state.isAnswerChecked) {
                 Row(modifier = Modifier.padding(bottom = 16.dp)) {
                     val icon = if (state.isAnswerCorrect) "🎉" else "❌"
-                    val title = if (state.isAnswerCorrect) "Excellent!" else "Correct solution:"
-
+                    val title = if (state.isAnswerCorrect) "Excellent!" else "Correct answer:"
                     Text(text = icon, style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (state.isAnswerCorrect) Color(0xFF58CC02) else Color(0xFFEA2B2B)
-                        )
+                        Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = if (state.isAnswerCorrect) Color(0xFF58CC02) else Color(0xFFEA2B2B))
                         if (!state.isAnswerCorrect) {
-                            Text(
-                                text = state.currentQuestion.options[state.currentQuestion.correctAnswerIndex],
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color(0xFFEA2B2B)
-                            )
+                            Text(text = state.currentQuestion.options[state.currentQuestion.correctAnswerIndex], style = MaterialTheme.typography.bodyLarge, color = Color(0xFFEA2B2B))
                         }
                     }
                 }
@@ -253,14 +329,13 @@ fun QuizContent(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = if (state.isAnswerChecked) "CONTINUE" else "CHECK",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
+                Text(text = if (state.isAnswerChecked) "CONTINUE" else "CHECK", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             }
         }
     }
 }
+
+// YARDIMCI BİLEŞENLER
 
 @Composable
 fun QuizOptionCard(
@@ -282,7 +357,7 @@ fun QuizOptionCard(
         isSelected -> Color(0xFFDDF4FF)
         else -> Color.White
     }
-    val textColor = if (!isAnswerChecked && !isSelected) Color(0xFF4B4B4B) else borderColor
+    val textColor = if (!isAnswerChecked && !isSelected) Color(0xFF4B4B4B) else borderColor // Seçili değilken siyah, seçiliyken mavi
 
     Surface(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
@@ -290,12 +365,31 @@ fun QuizOptionCard(
         border = BorderStroke(2.dp, borderColor),
         color = backgroundColor
     ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = textColor
-        )
+        Text(text, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = textColor)
+    }
+}
+
+@Composable
+fun TrueFalseCard(
+    text: String,
+    baseColor: Color,
+    isSelected: Boolean,
+    isAnswerChecked: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (isSelected) baseColor else Color(0xFFE5E5E5)
+    val bgColor = if (isSelected) baseColor.copy(alpha = 0.1f) else Color.White
+    val textColor = if (isSelected) baseColor else Color.Black
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(2.dp, borderColor),
+        color = bgColor
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(text, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = textColor)
+        }
     }
 }
 
@@ -311,17 +405,13 @@ fun LessonCompletedView(score: Int, passed: Boolean, onContinueClick: () -> Unit
         val subtitle = if (passed) "You earned $score XP" else "You need 70% to pass. Try again!"
         val btnColor = if (passed) Color(0xFF58CC02) else Color.Gray
 
-        Text(text = icon, style = MaterialTheme.typography.displayLarge)
+        Text(icon, style = MaterialTheme.typography.displayLarge)
         Spacer(modifier = Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF58CC02))
         Spacer(modifier = Modifier.height(8.dp))
         Text(subtitle, style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFC800))
         Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onContinueClick,
-            modifier = Modifier.fillMaxWidth(0.8f).height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = btnColor)
-        ) {
+        Button(onClick = onContinueClick, modifier = Modifier.fillMaxWidth(0.8f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = btnColor)) {
             Text("CONTINUE")
         }
     }

@@ -24,6 +24,7 @@ import com.profylish.auth.AuthScreen
 import com.profylish.chat.ChatScreen
 import com.profylish.home.HomeScreen
 import com.profylish.leaderboard.LeaderboardScreen
+// Navigasyon fonksiyonlarını import ettiğinden emin ol
 import com.profylish.lesson.navigation.lessonScreen
 import com.profylish.lesson.navigation.navigateToLesson
 import com.profylish.onboarding.OnboardingGraph
@@ -31,7 +32,7 @@ import com.profylish.profile.ProfileScreen
 import com.profylish.profylish.navigation.TopLevelDestination
 import com.profylish.profylish.ui.components.ProfylishBottomBar
 import com.profylish.profylish.ui.theme.ProfylishTheme
-import com.profylish.settings.SettingsScreen // Yeni Modülden Import
+import com.profylish.settings.SettingsScreen
 import com.profylish.shop.ShopScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -43,10 +44,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mainViewModel: MainViewModel = hiltViewModel()
             val startRoute by mainViewModel.startDestination.collectAsStateWithLifecycle()
-            val isDarkMode by mainViewModel.isDarkMode.collectAsStateWithLifecycle() // Tema kontrolü
+            val isDarkMode by mainViewModel.isDarkMode.collectAsStateWithLifecycle()
 
             ProfylishTheme(
-                darkTheme = isDarkMode // TEMA BURADAN KONTROL EDİLİYOR
+                darkTheme = isDarkMode
             ) {
                 if (startRoute != null) {
                     ProfylishAppContent(startDestination = startRoute!!)
@@ -109,8 +110,12 @@ fun ProfylishAppContent(
 
             composable(TopLevelDestination.HOME.route) {
                 HomeScreen(
-                    onLessonClick = { levelId, profession, isProgression ->
-                        navController.navigateToLesson(levelId, profession, isProgression)
+                    // 👇 DÜZELTME BURADA YAPILDI
+                    // HomeScreen artık (levelId, profession, category) döndürüyor.
+                    // 'category' bir String'dir (Örn: "TERM", "IDIOM").
+                    onLessonClick = { levelId, profession, category ->
+                        // LessonNavigation dosyasını güncellediğimiz için artık String kabul ediyor
+                        navController.navigateToLesson(levelId, profession, category)
                     },
                     onNavigateToSearch = {
                         navController.navigate("onboarding_flow")
@@ -146,12 +151,11 @@ fun ProfylishAppContent(
                 )
             }
 
-            // YENİ SETTINGS ROTASI
             composable("settings_route") {
                 SettingsScreen(
                     onBackClick = { navController.popBackStack() },
                     onSignOutSuccess = {
-                        navController.popBackStack() // Çıkış yapınca Profile ekranına dön
+                        navController.popBackStack()
                     }
                 )
             }
@@ -164,6 +168,7 @@ fun ProfylishAppContent(
                 )
             }
 
+            // lessonScreen artık 'category' parametresini de içeriyor (LessonNavigation içinde güncelledik)
             lessonScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToAuth = {

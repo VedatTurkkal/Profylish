@@ -1,13 +1,13 @@
 package com.profylish.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,121 +15,90 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LessonSelectionBottomSheet(
     clickedLevelId: Int,
     userLevel: Int,
-    userStage: Int,
+    // Hangi kategorilerin tamamlandığı bilgisini HomeViewModel'den alabiliriz
+    // Şimdilik varsayılan olarak boş veriyoruz
+    completedCategories: Set<String> = emptySet(),
     onDismiss: () -> Unit,
-    onLessonSelected: (Int) -> Unit
+    onCategorySelected: (String) -> Unit // Artık Index değil, Kategori Tipi (String) dönüyor
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 48.dp)
+                .padding(bottom = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Level $clickedLevelId",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF58CC02),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Text(
-                text = "Complete all 3 stages to advance!",
+                text = "Complete all sections to unlock the next level!",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            val totalLessons = 3
+            // Kategori Listesi (Supabase'deki tiplere uygun)
+            val categories = listOf(
+                "TERM" to "Terminology",
+                "IDIOM" to "Idioms",
+                "PHRASAL_VERB" to "Phrasal Verbs",
+                "ACRONYM" to "Acronyms"
+            )
 
-            for (lessonIndex in 0 until totalLessons) {
-                val state = getLessonState(
-                    lessonIndex = lessonIndex,
-                    clickedLevel = clickedLevelId,
-                    userLevel = userLevel,
-                    userStage = userStage
-                )
+            categories.forEach { (key, title) ->
+                val isCompleted = completedCategories.contains(key)
 
-                LessonItem(
-                    index = lessonIndex + 1,
-                    state = state,
+                CategoryItem(
+                    title = title,
+                    isCompleted = isCompleted,
                     onClick = {
-                        // Tıklanan dersin indeksini (0, 1, 2) yukarı gönderiyoruz
-                        if (state == LessonState.ACTIVE || state == LessonState.COMPLETED) {
-                            onLessonSelected(lessonIndex)
-                            onDismiss()
-                        }
+                        // Kategori tıklandığında seçimi yukarı ilet ve kapat
+                        onCategorySelected(key)
+                        onDismiss()
                     }
                 )
-
-                if (lessonIndex < totalLessons - 1) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 24.dp)
-                            .width(2.dp)
-                            .height(16.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-                }
-            }
-        }
-    }
-}
-
-enum class LessonState { LOCKED, ACTIVE, COMPLETED }
-
-fun getLessonState(lessonIndex: Int, clickedLevel: Int, userLevel: Int, userStage: Int): LessonState {
-    return when {
-        clickedLevel < userLevel -> LessonState.COMPLETED
-        clickedLevel > userLevel -> LessonState.LOCKED
-        else -> {
-            when {
-                lessonIndex < userStage -> LessonState.COMPLETED
-                lessonIndex == userStage -> LessonState.ACTIVE
-                else -> LessonState.LOCKED
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
 }
 
 @Composable
-fun LessonItem(
-    index: Int,
-    state: LessonState,
+fun CategoryItem(
+    title: String,
+    isCompleted: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = when (state) {
-        LessonState.ACTIVE -> MaterialTheme.colorScheme.primaryContainer
-        LessonState.COMPLETED -> MaterialTheme.colorScheme.secondaryContainer
-        LessonState.LOCKED -> MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val icon: ImageVector = when (state) {
-        LessonState.ACTIVE -> Icons.Default.PlayArrow
-        LessonState.COMPLETED -> Icons.Default.Check
-        LessonState.LOCKED -> Icons.Default.Lock
-    }
-
-    val contentColor = when(state) {
-        LessonState.LOCKED -> Color.Gray
-        else -> MaterialTheme.colorScheme.onSurface
-    }
+    val borderColor = if (isCompleted) Color(0xFFFFC107) else Color(0xFFE5E5E5)
+    val iconColor = if (isCompleted) Color(0xFFFFC107) else Color(0xFF58CC02)
+    val icon = if (isCompleted) Icons.Default.Check else Icons.Default.PlayArrow
+    val backgroundColor = if (isCompleted) Color(0xFFFFF8E1) else Color.White
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor.copy(alpha = 0.5f))
-            .clickable(enabled = state != LessonState.LOCKED) { onClick() }
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .border(2.dp, borderColor, RoundedCornerShape(16.dp))
+            .clickable { onClick() } // Tamamlansa bile tekrar çözülebilir (Review modu)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -137,36 +106,27 @@ fun LessonItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(
-                    if (state == LessonState.ACTIVE) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surface
-                ),
+                .background(iconColor.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (state == LessonState.ACTIVE) Color.White else contentColor
-            )
+            Icon(imageVector = icon, contentDescription = null, tint = iconColor)
         }
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color.Black,
+            modifier = Modifier.weight(1f)
+        )
+
+        if (isCompleted) {
             Text(
-                text = "Lesson $index",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = contentColor
-            )
-            Text(
-                text = when(state) {
-                    LessonState.COMPLETED -> "Review"
-                    LessonState.ACTIVE -> "Start"
-                    LessonState.LOCKED -> "Locked"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.7f)
+                text = "DONE",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFFFFC107)
             )
         }
     }

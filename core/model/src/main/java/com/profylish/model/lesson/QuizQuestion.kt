@@ -13,5 +13,6 @@ data class QuizQuestion(
     val questionText: String,
     val options: List<String>,
     val correctAnswerIndex: Int,
-    val explanation: String? = null
+    val explanation: String? = null,
+    val targetWord: String? = null
 )

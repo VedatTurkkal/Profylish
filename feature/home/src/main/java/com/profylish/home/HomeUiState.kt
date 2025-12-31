@@ -12,5 +12,6 @@ data class HomeUiState(
     val gems: Int = 0,
     val hearts: Int = 0,
     val streak: Int = 0,
-    val nodes: List<RoadmapNode> = emptyList()
+    val nodes: List<RoadmapNode> = emptyList(),
+    val isVibrationEnabled: Boolean = true
 )

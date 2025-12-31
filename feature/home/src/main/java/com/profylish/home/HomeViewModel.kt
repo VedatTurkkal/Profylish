@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.domain.repository.UserDataRepository
+import com.profylish.model.roadmap.RoadmapNode // Doğru import (Senin modelin)
 import com.profylish.model.user.CourseProgress
 import com.profylish.model.user.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,14 +54,13 @@ class HomeViewModel @Inject constructor(
                 isLoading = false,
                 profession = activeJobTitle,
                 availableCourses = userPrefs.courses.keys.toList(),
-
                 level = progress.level,
                 currentStage = progress.stagesCompleted,
-
                 gems = userPrefs.gems,
                 hearts = userPrefs.hearts,
                 streak = userPrefs.streak,
-                nodes = realNodes
+                nodes = realNodes,
+                isVibrationEnabled = userPrefs.isVibrationEnabled
             )
         }
     }
