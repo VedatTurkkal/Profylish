@@ -62,6 +62,7 @@ dependencies {
     implementation(project(":feature:leaderboard"))
     implementation(project(":feature:chat"))
     implementation(project(":feature:settings"))
+    implementation(project(":core:common"))
 
     implementation(libs.revenuecat.purchases)
     implementation(libs.androidx.hilt.navigation.compose)

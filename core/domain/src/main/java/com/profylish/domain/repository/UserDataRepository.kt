@@ -26,4 +26,5 @@ interface UserDataRepository {
 
     suspend fun deleteAvatar()
     suspend fun updateSettings(isVibration: Boolean, isDarkMode: Boolean, isNotifications: Boolean)
+    suspend fun markCategoryAsCompleted(levelId: Int, category: String)
 }

@@ -13,14 +13,12 @@ class GenerateDailyLessonUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         profession: String,
-        levelId: String, // Roadmap'ten gelen "1", "2", "3" vb.
-        category: String // "TERM", "IDIOM", "PHRASAL_VERB", "ACRONYM"
+        levelId: String,
+        category: String
     ): List<QuizQuestion> {
 
-        // Roadmap seviyesini CEFR başlangıç noktasına eşliyoruz
         val baseCefr = mapLevelIdToCefr(levelId)
 
-        // UI kategorisini DB'deki 'type' sütunu yazımına çeviriyoruz
         val dbType = when(category) {
             "TERM" -> "Term"
             "IDIOM" -> "Idiom"
@@ -29,7 +27,6 @@ class GenerateDailyLessonUseCase @Inject constructor(
             else -> "Term"
         }
 
-        // Kelimeleri çekiyoruz (Repository artık hem Onboarding metnini hem CEFR kodunu anlıyor)
         val words = dictionaryRepository.getWordsForLesson(profession, baseCefr, dbType)
         if (words.isEmpty()) return emptyList()
 
@@ -37,7 +34,6 @@ class GenerateDailyLessonUseCase @Inject constructor(
 
         when (dbType) {
             "Term" -> {
-                // Term'ler için 4'lü Matching (Eşleştirme) oluştur
                 words.chunked(4).forEach { group ->
                     if (group.size >= 2) {
                         questions.add(QuizQuestion(
@@ -49,7 +45,6 @@ class GenerateDailyLessonUseCase @Inject constructor(
                         ))
                     }
                 }
-                // Fallback: Yeterli kelime yoksa Çoktan Seçmeli üret
                 if (questions.isEmpty()) createMCQuestions(words, questions)
             }
 
@@ -72,23 +67,46 @@ class GenerateDailyLessonUseCase @Inject constructor(
 
             "Idiom", "Phrasal Verb" -> {
                 words.forEach { word ->
-                    val sentence = word.exampleSentence ?: "${word.word} is commonly used in professional meetings."
-                    val blankedSentence = sentence.replace(
+                    val rawSentence = word.exampleSentence ?: "${word.word} is commonly used in professional meetings."
+
+                    // 1. Kelimeyi (büyük/küçük harf duyarsız) bul ve boşluk yap
+                    var blankedSentence = rawSentence.replace(
                         Regex("\\b${Regex.escape(word.word)}\\b", RegexOption.IGNORE_CASE),
                         "________"
                     )
 
-                    val options = (words.filter { it.id != word.id }.shuffled().take(3).map { it.word } + word.word).shuffled()
+                    // 2. Eğer kelime çekimlenmişse (örn: 'setting up' vs 'Set up') ve değişmediyse,
+                    //    soruyu 'Tanım' sorusuna çevir. Cevabı açık etme.
+                    if (blankedSentence == rawSentence) {
+                        blankedSentence = "Complete the phrase for this definition:\n\n\"${word.definition}\"\n\n________"
+                    }
 
-                    questions.add(QuizQuestion(
-                        id = word.id.toString(),
-                        type = QuestionType.FILL_IN_THE_BLANK,
-                        questionText = blankedSentence,
-                        options = options,
-                        correctAnswerIndex = options.indexOf(word.word),
-                        targetWord = word.word,
-                        explanation = "Example: $sentence"
-                    ))
+                    // 3. Şıkları hazırla, temizle ve TEKRARLARI ÖNLE (.distinct())
+                    val distractors = words.filter { it.id != word.id }
+                        .shuffled()
+                        .take(3)
+                        .map { it.word }
+
+                    val options = (distractors + word.word)
+                        .map { it.trim() } // Boşlukları temizle
+                        .distinct()        // Aynı şıkkı sil
+                        .shuffled()
+
+                    // Doğru cevabın index'ini bul (trimlenmiş haliyle)
+                    val correctIndex = options.indexOf(word.word.trim())
+
+                    // Eğer distinct yüzünden bir şeyler ters gittiyse ve doğru cevap listede yoksa (çok düşük ihtimal ama güvenlik)
+                    if (correctIndex != -1) {
+                        questions.add(QuizQuestion(
+                            id = word.id.toString(),
+                            type = QuestionType.FILL_IN_THE_BLANK,
+                            questionText = blankedSentence,
+                            options = options,
+                            correctAnswerIndex = correctIndex,
+                            targetWord = word.word,
+                            explanation = "Definition: ${word.definition}"
+                        ))
+                    }
                 }
             }
         }
@@ -97,21 +115,30 @@ class GenerateDailyLessonUseCase @Inject constructor(
 
     private fun createMCQuestions(words: List<com.profylish.model.curriculum.DictionaryWord>, list: MutableList<QuizQuestion>) {
         words.forEach { w ->
-            val opts = (words.filter { it.id != w.id }.shuffled().take(3).map { it.word } + w.word).shuffled()
-            list.add(QuizQuestion(
-                id = w.id.toString(),
-                type = QuestionType.MULTIPLE_CHOICE,
-                questionText = "Which term matches this definition?\n\n${w.definition}",
-                options = opts,
-                correctAnswerIndex = opts.indexOf(w.word)
-            ))
+            val distractors = words.filter { it.id != w.id }.shuffled().take(3).map { it.word }
+            val options = (distractors + w.word)
+                .map { it.trim() }
+                .distinct() // Burada da tekrarı önle
+                .shuffled()
+
+            val correctIndex = options.indexOf(w.word.trim())
+
+            if (correctIndex != -1) {
+                list.add(QuizQuestion(
+                    id = w.id.toString(),
+                    type = QuestionType.MULTIPLE_CHOICE,
+                    questionText = "Which term matches this definition?\n\n${w.definition}",
+                    options = options,
+                    correctAnswerIndex = correctIndex
+                ))
+            }
         }
     }
 
     private fun mapLevelIdToCefr(levelId: String): String = when(levelId) {
-        "1" -> "B1" // Starting from Scratch -> B1-B2 havuzu
-        "2" -> "B2" // Some Knowledge -> B2-C1 havuzu
-        "3" -> "C1" // Experienced -> C1-C2 havuzu
+        "1" -> "B1"
+        "2" -> "B2"
+        "3" -> "C1"
         else -> "B1"
     }
 }

@@ -8,6 +8,7 @@ import com.profylish.domain.repository.DictionaryRepository
 import com.profylish.domain.repository.UserDataRepository
 import com.profylish.domain.usecase.learning.GenerateDailyLessonUseCase
 import com.profylish.lesson.model.QuizUiState
+import com.profylish.model.lesson.QuestionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -18,8 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-// QuestionType enumunu import etmeyi unutmayın (Matching logic için)
-import com.profylish.model.lesson.QuestionType
 
 sealed interface QuizNavigationEvent {
     data object NavigateToAuth : QuizNavigationEvent
@@ -60,7 +59,6 @@ class QuizViewModel @Inject constructor(
                 val currentHearts = userPrefs.hearts
                 val vibrationEnabled = userPrefs.isVibrationEnabled
 
-                // GÜNCELLENDİ: UseCase 3 parametre ile çağrılıyor
                 val questions = generateDailyLessonUseCase(profession, levelId, quizCategory)
 
                 if (questions.isNotEmpty()) {
@@ -93,30 +91,31 @@ class QuizViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is QuizUiState.Success) {
 
-            // --- MATCHING PAIRS ÖZEL KONTROL ---
+            // --- MATCHING PAIRS ---
             if (currentState.currentQuestion.type == QuestionType.MATCHING_PAIRS) {
-                // Eşleştirme zaten UI tarafında kontrol ediliyor. Buraya gelindiyse hepsi doğrudur.
-                // Puan ver ve geç.
-                val newScore = currentState.score + 20 // Matching daha değerli olabilir
-
+                val newScore = currentState.score + 20
                 viewModelScope.launch {
                     if (currentState.isVibrationEnabled) _navigationEvent.send(QuizNavigationEvent.VibrateSuccess)
                 }
-
                 _uiState.value = currentState.copy(
                     isAnswerChecked = true,
                     isAnswerCorrect = true,
                     score = newScore
-                    // Matching için combo mantığı karmaşık olabilir, şimdilik es geçiyoruz
                 )
-
-                // Otomatik geçiş için kısa delay (opsiyonel) veya kullanıcı "Continue" diyebilir
                 return
             }
 
-            // --- DİĞER SORU TİPLERİ (MC, T/F, FILL) ---
+            // --- DİĞER SORU TİPLERİ ---
             if (currentState.selectedOptionIndex != null) {
+
+                // --- SAĞLAM KONTROL ---
+                // Sadece index'e güvenmek yerine metinleri de kontrol ediyoruz.
+                // Çünkü veri tabanında "Set up " (boşluklu) olabilir.
+                val selectedText = currentState.currentQuestion.options[currentState.selectedOptionIndex].trim()
+                val correctText = currentState.currentQuestion.options[currentState.currentQuestion.correctAnswerIndex].trim()
+
                 val isCorrect = currentState.selectedOptionIndex == currentState.currentQuestion.correctAnswerIndex
+                        || selectedText.equals(correctText, ignoreCase = true)
 
                 viewModelScope.launch {
                     if (currentState.isVibrationEnabled) {
@@ -126,9 +125,11 @@ class QuizViewModel @Inject constructor(
                     if (!isCorrect) userDataRepository.deductHeart()
                 }
 
+                val newHearts = if (!isCorrect) (currentState.hearts - 1).coerceAtLeast(0) else currentState.hearts
+                val isDepleted = newHearts == 0
+
                 val newCombo = if (isCorrect) currentState.comboStreak + 1 else 0
                 val showAnim = isCorrect && newCombo >= 2
-                val newHearts = if (!isCorrect) (currentState.hearts - 1).coerceAtLeast(0) else currentState.hearts
 
                 _uiState.value = currentState.copy(
                     isAnswerChecked = true,
@@ -136,7 +137,8 @@ class QuizViewModel @Inject constructor(
                     score = if (isCorrect) currentState.score + 10 else currentState.score,
                     comboStreak = newCombo,
                     showComboAnim = showAnim,
-                    hearts = newHearts
+                    hearts = newHearts,
+                    isHeartsDepleted = isDepleted
                 )
 
                 if (showAnim) {
@@ -176,21 +178,18 @@ class QuizViewModel @Inject constructor(
         if (currentState !is QuizUiState.Success) return
 
         val totalPossible = currentState.totalQuestions * 10
-        // Not: Matching soruları varsa totalPossible hesabı değişebilir (örn: soru sayısı * 20)
-        // Basitlik için yüzde hesabı yerine direkt geçiş de verebilirsiniz veya puanı dinamik hesaplayabilirsiniz.
-
         val percentage = if (totalPossible > 0) (currentState.score.toFloat() / totalPossible) * 100 else 0f
-
-        // Esnek geçiş: Matching soruları puanı şişirebilir, yüzde hesabı > 100 olabilir.
         val passed = percentage >= 70 || (currentState.questions.any { it.type == QuestionType.MATCHING_PAIRS } && currentState.score > 0)
 
         viewModelScope.launch {
             if (passed) {
                 userDataRepository.updateUserStats(xpEarned = currentState.score, gemsEarned = 15)
-
                 if (isProgression) {
                     userDataRepository.unlockNextLevel()
                 }
+
+                val levelInt = levelId.toIntOrNull() ?: 1
+                userDataRepository.markCategoryAsCompleted(levelInt, quizCategory)
 
                 val userId = authRepository.getCurrentUserId()
                 if (userId != null) {

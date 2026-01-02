@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,11 +85,31 @@ fun QuizScreen(
         }
     }
 
+    // --- GAME OVER DIALOG ---
+    // Kalpler bittiyse bunu göster
+    if (uiState is QuizUiState.Success && (uiState as QuizUiState.Success).isHeartsDepleted) {
+        AlertDialog(
+            onDismissRequest = { onBackClick() },
+            title = { Text(text = "Out of Hearts!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+            text = { Text("You made too many mistakes. Practice makes perfect, try again later!", color = MaterialTheme.colorScheme.onSurface) },
+            icon = { Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            confirmButton = {
+                Button(
+                    onClick = { onBackClick() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("END SESSION", color = Color.White)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
     if (showQuitDialog) {
         AlertDialog(
             onDismissRequest = { showQuitDialog = false },
-            title = { Text("Quit this session?") },
-            text = { Text("You will lose all progress in this lesson if you quit now.") },
+            title = { Text("Quit this session?", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("You will lose all progress in this lesson if you quit now.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 TextButton(onClick = {
                     showQuitDialog = false
@@ -96,28 +117,31 @@ fun QuizScreen(
                 }) { Text("QUIT", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { showQuitDialog = false }) { Text("CANCEL") }
-            }
+                TextButton(onClick = { showQuitDialog = false }) { Text("CANCEL", color = MaterialTheme.colorScheme.primary) }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
     if (showSignUpDialog) {
         AlertDialog(
             onDismissRequest = { showSignUpDialog = false; onBackClick() },
-            title = { Text("Save Your Progress!") },
-            text = { Text("Great job! Create a free profile now to save your XP, streak, and league ranking permanently.") },
+            title = { Text("Save Your Progress!", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Great job! Create a free profile now to save your XP, streak, and league ranking permanently.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 Button(onClick = { showSignUpDialog = false; onNavigateToAuth() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1CB0F6))) {
-                    Text("Create Profile", fontWeight = FontWeight.Bold)
+                    Text("Create Profile", fontWeight = FontWeight.Bold, color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSignUpDialog = false; onBackClick() }) { Text("Maybe Later", color = Color.Gray) }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
-    Scaffold(containerColor = Color.White) { innerPadding ->
+    // DARK MODE FIX: containerColor = MaterialTheme.colorScheme.background
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState) {
                 is QuizUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -132,11 +156,9 @@ fun QuizScreen(
                 }
                 is QuizUiState.Success -> {
                     if (state.isLessonCompleted) {
-                        // Matching soruları puanı şişirebilir, yüzde hesabı > 100 olabilir.
-                        // Bu yüzden basit bir kontrol: ya yüzde > 70 ya da puan > 0
                         val totalPossible = state.totalQuestions * 10
                         val percentage = if (totalPossible > 0) (state.score.toFloat() / totalPossible) * 100 else 0f
-                        val passed = percentage >= 70 || state.score > 0 // Matching varsa puan > 0 yeterli olabilir
+                        val passed = percentage >= 70 || state.score > 0
 
                         LessonCompletedView(score = state.score, passed = passed, onContinueClick = { viewModel.onLessonFinished() })
                     } else {
@@ -148,7 +170,6 @@ fun QuizScreen(
                             onCloseClick = { showQuitDialog = true }
                         )
 
-                        // COMBO ANIMASYONU
                         AnimatedVisibility(
                             visible = state.showComboAnim,
                             enter = scaleIn() + fadeIn(),
@@ -200,12 +221,15 @@ fun QuizContent(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onCloseClick) { Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray) }
+            IconButton(onClick = onCloseClick) {
+                // DARK MODE FIX: tint = onSurface
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            }
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(8.dp)),
                 color = Color(0xFF58CC02),
-                trackColor = Color(0xFFE5E5E5)
+                trackColor = MaterialTheme.colorScheme.surfaceVariant // Track rengini de temaya bağladık
             )
             Spacer(modifier = Modifier.width(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,28 +239,14 @@ fun QuizContent(
             }
         }
 
-        // SORU ALANI ve ALT BAR (Check Button)
-        // Matching sorularında alt bar farklı davranabilir veya hiç olmayabilir.
-        // Bu yüzden Column içinde weight vererek alanı bölüyoruz.
-
         Box(modifier = Modifier.weight(1f)) {
-
-            // --- SORU TİPİNE GÖRE GÖSTERİM (Dinamik) ---
             when (state.currentQuestion.type) {
-
-                // 1. MATCHING PAIRS (EŞLEŞTİRME)
                 QuestionType.MATCHING_PAIRS -> {
-                    // Matching ekranı tam ekran kaplar, check butonu içinde yönetilir
                     MatchingQuizContent(
                         pairs = state.currentQuestion.matchingPairs,
-                        onAllMatched = {
-                            // Hepsi eşleştiğinde otomatik kontrol et
-                            onCheckAnswer()
-                        }
+                        onAllMatched = { onCheckAnswer() }
                     )
                 }
-
-                // 2. DİĞER TİPLER (Scrollable Column İçinde)
                 else -> {
                     Column(
                         modifier = Modifier
@@ -247,17 +257,19 @@ fun QuizContent(
                     ) {
                         when (state.currentQuestion.type) {
                             QuestionType.FILL_IN_THE_BLANK -> {
-                                Text("Complete the phrase:", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                                Text("Complete the phrase:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(16.dp))
+                                // DARK MODE FIX: containerColor = surfaceVariant
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
                                 ) {
                                     Text(
                                         text = state.currentQuestion.questionText,
                                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                                         modifier = Modifier.padding(24.dp),
-                                        textAlign = TextAlign.Center
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurface // Text rengi
                                     )
                                 }
                                 state.currentQuestion.options.forEachIndexed { index, optionText ->
@@ -277,7 +289,8 @@ fun QuizContent(
                                     text = state.currentQuestion.questionText,
                                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                                     textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                                    color = MaterialTheme.colorScheme.onBackground // Text rengi
                                 )
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     state.currentQuestion.options.forEachIndexed { index, optionText ->
@@ -299,7 +312,7 @@ fun QuizContent(
                                 Text(
                                     text = state.currentQuestion.questionText,
                                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = Color(0xFF3C3C3C),
+                                    color = MaterialTheme.colorScheme.onBackground, // Text rengi
                                     modifier = Modifier.padding(bottom = 32.dp)
                                 )
                                 state.currentQuestion.options.forEachIndexed { index, optionText ->
@@ -319,13 +332,15 @@ fun QuizContent(
             }
         }
 
-        // --- ALT KONTROL BAR (Sadece Matching Dışındaki Sorular İçin) ---
         if (state.currentQuestion.type != QuestionType.MATCHING_PAIRS) {
             val footerColor = if (state.isAnswerChecked) {
-                if (state.isAnswerCorrect) Color(0xFFD7FFB8) else Color(0xFFFFDFE0)
+                if (state.isAnswerCorrect) Color(0xFFD7FFB8) else Color(0xFFFFDFE0) // Bunlar statik kalabilir (renkli geri bildirim)
             } else {
-                Color.White
+                MaterialTheme.colorScheme.background // Check öncesi arka plan
             }
+
+            // Eğer cevap kontrol edildiyse, text renkleri koyu olmalı çünkü arka plan açık yeşil/kırmızı oluyor.
+            val footerContentColor = if (state.isAnswerChecked) Color.Black else MaterialTheme.colorScheme.onBackground
 
             Column(modifier = Modifier.fillMaxWidth().background(footerColor).padding(16.dp)) {
                 if (state.isAnswerChecked) {
@@ -349,18 +364,17 @@ fun QuizContent(
                     enabled = state.selectedOptionIndex != null,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (state.isAnswerChecked && !state.isAnswerCorrect) Color(0xFFEA2B2B) else Color(0xFF58CC02),
-                        disabledContainerColor = Color(0xFFE5E5E5)
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(text = if (state.isAnswerChecked) "CONTINUE" else "CHECK", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(text = if (state.isAnswerChecked) "CONTINUE" else "CHECK", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
                 }
             }
         }
     }
 }
 
-// --- MATCHING QUIZ CONTENT ---
 @Composable
 fun MatchingQuizContent(
     pairs: List<Pair<String, String>>,
@@ -398,7 +412,7 @@ fun MatchingQuizContent(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Tap matching pairs", style = MaterialTheme.typography.titleMedium)
+        Text("Tap matching pairs", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxSize()) {
@@ -430,15 +444,17 @@ fun MatchingCard(
     isSmallText: Boolean = false,
     onClick: () -> Unit
 ) {
+    // DARK MODE FIX
     val bgColor = when {
         isMatched -> Color.Transparent
-        isSelected -> Color(0xFFDDF4FF)
-        else -> Color.White
+        isSelected -> Color(0xFFDDF4FF) // Seçiliyken açık mavi kalabilir
+        else -> MaterialTheme.colorScheme.surface // Normalde tema rengi
     }
 
-    val borderColor = if (isSelected) Color(0xFF1CB0F6) else Color(0xFFE5E5E5)
-    val textColor = if (isMatched) Color.LightGray else Color(0xFF4B4B4B)
-    val alpha = if (isMatched) 0.3f else 1f
+    val borderColor = if (isSelected) Color(0xFF1CB0F6) else MaterialTheme.colorScheme.outlineVariant
+
+    // Matched ise gri, değilse (Dark mode ise beyaz, Light ise siyah)
+    val textColor = if (isMatched) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onSurface
 
     Card(
         modifier = Modifier
@@ -446,7 +462,7 @@ fun MatchingCard(
             .height(if (isSmallText) 100.dp else 60.dp)
             .clickable(enabled = !isMatched && !isSelected) { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = bgColor.copy(alpha = alpha)),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
         border = if (!isMatched) BorderStroke(2.dp, borderColor) else null
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.Center) {
@@ -462,8 +478,6 @@ fun MatchingCard(
     }
 }
 
-// --- YARDIMCI BİLEŞENLER ---
-
 @Composable
 fun QuizOptionCard(
     text: String,
@@ -476,15 +490,17 @@ fun QuizOptionCard(
         isAnswerChecked && isCorrectAnswer -> Color(0xFF58CC02)
         isAnswerChecked && isSelected -> Color(0xFFEA2B2B)
         isSelected -> Color(0xFF1CB0F6)
-        else -> Color(0xFFE5E5E5)
+        else -> MaterialTheme.colorScheme.outlineVariant // Dark mode border
     }
     val backgroundColor = when {
         isAnswerChecked && isCorrectAnswer -> Color(0xFFD7FFB8)
         isAnswerChecked && isSelected -> Color(0xFFFFDFE0)
         isSelected -> Color(0xFFDDF4FF)
-        else -> Color.White
+        else -> MaterialTheme.colorScheme.surface // Dark mode bg
     }
-    val textColor = if (!isAnswerChecked && !isSelected) Color(0xFF4B4B4B) else borderColor
+
+    // Eğer checked değilse ve seçili değilse tema rengi (beyaz/siyah), aksi halde özel renk
+    val textColor = if (!isAnswerChecked && !isSelected) MaterialTheme.colorScheme.onSurface else Color(0xFF4B4B4B)
 
     Surface(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
@@ -504,9 +520,9 @@ fun TrueFalseCard(
     isAnswerChecked: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) baseColor else Color(0xFFE5E5E5)
-    val bgColor = if (isSelected) baseColor.copy(alpha = 0.1f) else Color.White
-    val textColor = if (isSelected) baseColor else Color.Black
+    val borderColor = if (isSelected) baseColor else MaterialTheme.colorScheme.outlineVariant
+    val bgColor = if (isSelected) baseColor.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+    val textColor = if (isSelected) baseColor else MaterialTheme.colorScheme.onSurface
 
     Surface(
         modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
@@ -539,7 +555,7 @@ fun LessonCompletedView(score: Int, passed: Boolean, onContinueClick: () -> Unit
         Text(subtitle, style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFC800))
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onContinueClick, modifier = Modifier.fillMaxWidth(0.8f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = btnColor)) {
-            Text("CONTINUE")
+            Text("CONTINUE", color = Color.White)
         }
     }
 }

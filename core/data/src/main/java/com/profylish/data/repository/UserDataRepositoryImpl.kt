@@ -29,7 +29,6 @@ class UserDataRepositoryImpl @Inject constructor(
     override val userData: Flow<UserPreferences> = preferencesDataSource.userData
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    // --- Profil Güncelleme ---
     override suspend fun updateProfile(username: String?, avatarUrl: String?) {
         val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return
 
@@ -57,7 +56,6 @@ class UserDataRepositoryImpl @Inject constructor(
         val fileName = "$userId/avatar_${System.currentTimeMillis()}.jpg"
         val bucket = supabaseClient.storage.from("avatars")
 
-        // upsert true parametresi
         bucket.upload(fileName, byteArray, true)
 
         val publicUrl = bucket.publicUrl(fileName)
@@ -71,7 +69,6 @@ class UserDataRepositoryImpl @Inject constructor(
         updateProfile(username = newUsername, avatarUrl = null)
     }
 
-    // --- Tarih Yardımcıları ---
     private fun getTodayDateString(): String {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LocalDate.now().toString()
@@ -95,7 +92,6 @@ class UserDataRepositoryImpl @Inject constructor(
         return lastDateStr == getTodayDateString()
     }
 
-    // --- Ders ve İstatistik İşlemleri ---
     override suspend fun switchOrAddCourse(occupationTitle: String) {
         preferencesDataSource.updateData { current ->
             val existingCourses = current.courses.toMutableMap()
@@ -116,11 +112,17 @@ class UserDataRepositoryImpl @Inject constructor(
 
     override suspend fun updateUserStats(xpEarned: Int, gemsEarned: Int) {
         val todayStr = getTodayDateString()
+
         preferencesDataSource.updateData { current ->
             val activeId = current.activeCourseId ?: return@updateData current
+
             val activeProgress = current.courses[activeId] ?: CourseProgress()
+
+            val updatedProgress = activeProgress.copy(xp = activeProgress.xp + xpEarned)
+
             val updatedCourses = current.courses.toMutableMap()
-            updatedCourses[activeId] = activeProgress.copy(xp = activeProgress.xp + xpEarned)
+            updatedCourses[activeId] = updatedProgress
+
             var newStreak = current.streak
             var newHasStreakFreeze = current.hasStreakFreeze
             val lastLessonDate = current.lastLessonDate
@@ -128,7 +130,7 @@ class UserDataRepositoryImpl @Inject constructor(
             if (lastLessonDate == null) {
                 newStreak = 1
             } else if (isToday(lastLessonDate)) {
-                newStreak = current.streak
+                newStreak = current.streak // Bugün zaten yapmış, artırma
             } else if (isYesterday(lastLessonDate)) {
                 newStreak = current.streak + 1
             } else {
@@ -138,16 +140,20 @@ class UserDataRepositoryImpl @Inject constructor(
                     newStreak = 1
                 }
             }
+
+            val correctTotalXp = updatedCourses.values.sumOf { it.xp }
+
             current.copy(
                 gems = current.gems + gemsEarned,
                 courses = updatedCourses,
                 streak = newStreak,
                 hasStreakFreeze = newHasStreakFreeze,
                 lastLessonDate = todayStr,
-                totalXp = updatedCourses.values.sumOf { it.xp }
+                totalXp = correctTotalXp
             )
         }
-        syncToCloud()
+
+        scope.launch { syncToCloud() }
     }
 
     override suspend fun deductHeart() {
@@ -248,14 +254,11 @@ class UserDataRepositoryImpl @Inject constructor(
     override suspend fun deleteAvatar() {
         val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return
 
-        // Local güncelleme (Hız için önce)
         preferencesDataSource.updateData { it.copy(avatarUrl = null) }
 
-        // Cloud güncelleme
         try {
             supabaseClient.from("profiles").update(
                 {
-                    // [DÜZELTME] 'null as String?' kullanarak hangi set metodunun çağrılacağını belirtiyoruz.
                     set("avatar_url", null as String?)
                 }
             ) { filter { eq("id", userId) } }
@@ -283,6 +286,21 @@ class UserDataRepositoryImpl @Inject constructor(
                     }) { filter { eq("id", userId) } }
                 } catch (e: Exception) { Log.e("Settings", "Sync failed") }
             }
+        }
+    }
+
+    override suspend fun markCategoryAsCompleted(levelId: Int, category: String) {
+        preferencesDataSource.updateData { currentPrefs ->
+
+            val currentMap = currentPrefs.completedCategories.toMutableMap()
+
+            val currentLevelSet = currentMap[levelId]?.toMutableSet() ?: mutableSetOf()
+
+            currentLevelSet.add(category)
+
+            currentMap[levelId] = currentLevelSet
+
+            currentPrefs.copy(completedCategories = currentMap)
         }
     }
 
