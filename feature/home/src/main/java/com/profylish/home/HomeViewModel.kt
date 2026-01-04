@@ -2,6 +2,8 @@ package com.profylish.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.profylish.common.util.ConnectivityObserver
+import com.profylish.common.util.ConnectivityStatus
 import com.profylish.domain.repository.CurriculumRepository
 import com.profylish.domain.repository.UserDataRepository
 import com.profylish.model.user.CourseProgress
@@ -18,20 +20,43 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val userDataRepository: UserDataRepository,
-    private val curriculumRepository: CurriculumRepository
+    private val curriculumRepository: CurriculumRepository,
+    private val connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(HomeUiState(isLoading = true)) // Başlangıçta loading olsun
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
         observeUserData()
+        observeConnectivity()
     }
 
     private fun observeUserData() {
         viewModelScope.launch {
+            // Burada userData'yı dinliyoruz. Loglara göre veri geliyor.
             userDataRepository.userData.collectLatest { userPrefs ->
-                handleUserPrefs(userPrefs)
+                // Eğer veri geldiyse ve activeCourseId varsa işleriz
+                if (userPrefs.activeCourseId != null) {
+                    handleUserPrefs(userPrefs)
+                } else {
+                    // Kullanıcı yeni gelmiş olabilir, loading'i kapat ama veriyi boş göster
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    private fun observeConnectivity() {
+        viewModelScope.launch {
+            connectivityObserver.observe().collectLatest { status ->
+                if (status == ConnectivityStatus.Available) {
+                    try {
+                        userDataRepository.restoreFromCloud()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
             }
         }
     }
@@ -39,11 +64,11 @@ class HomeViewModel @Inject constructor(
     private suspend fun handleUserPrefs(userPrefs: UserPreferences) {
         val activeJobTitle = userPrefs.activeCourseId ?: return
 
-        _uiState.update { it.copy(isLoading = true) }
+        // Artık loading'i burada tekrar true yapmıyoruz ki ekran titremesin,
+        // arka planda güncelleyelim.
 
         val progress = userPrefs.courses[activeJobTitle] ?: CourseProgress()
 
-        // Veritabanından (Supabase) mevcut ilerlemeye göre yol haritasını getir
         val realNodes = curriculumRepository.generateRoadmap(
             occupationTitle = activeJobTitle,
             currentLevel = progress.level
@@ -61,15 +86,11 @@ class HomeViewModel @Inject constructor(
                 streak = userPrefs.streak,
                 nodes = realNodes,
                 isVibrationEnabled = userPrefs.isVibrationEnabled,
-                // UI'daki "tik" işaretlerini göstermek için Map verisini state'e aktarıyoruz
                 completedCategoriesByLevel = userPrefs.completedCategories
             )
         }
     }
 
-    /**
-     * Kurs değiştirme işlemi (Örn: Software Engineer -> Real Estate)
-     */
     fun switchCourse(courseName: String) {
         viewModelScope.launch {
             userDataRepository.switchOrAddCourse(courseName)

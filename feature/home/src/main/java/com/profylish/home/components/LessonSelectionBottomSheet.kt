@@ -18,17 +18,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.profylish.ui.components.RavenMascot
+import com.profylish.ui.components.RavenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LessonSelectionBottomSheet(
     clickedLevelId: Int,
     userLevel: Int,
-    // Hangi kategorilerin tamamlandığı bilgisini HomeViewModel'den alabiliriz
-    // Şimdilik varsayılan olarak boş veriyoruz
     completedCategories: Set<String> = emptySet(),
     onDismiss: () -> Unit,
-    onCategorySelected: (String) -> Unit // Artık Index değil, Kategori Tipi (String) dönüyor
+    onCategorySelected: (String) -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -41,6 +41,14 @@ fun LessonSelectionBottomSheet(
                 .padding(bottom = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
+            RavenMascot(
+                state = RavenState.TEACHER, // veya ROADMAP
+                modifier = Modifier.size(100.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "Level $clickedLevelId",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -55,7 +63,6 @@ fun LessonSelectionBottomSheet(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Kategori Listesi (Supabase'deki tiplere uygun)
             val categories = listOf(
                 "TERM" to "Terminology",
                 "IDIOM" to "Idioms",
@@ -70,7 +77,6 @@ fun LessonSelectionBottomSheet(
                     title = title,
                     isCompleted = isCompleted,
                     onClick = {
-                        // Kategori tıklandığında seçimi yukarı ilet ve kapat
                         onCategorySelected(key)
                         onDismiss()
                     }
@@ -98,7 +104,7 @@ fun CategoryItem(
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .border(2.dp, borderColor, RoundedCornerShape(16.dp))
-            .clickable { onClick() } // Tamamlansa bile tekrar çözülebilir (Review modu)
+            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -122,12 +128,15 @@ fun CategoryItem(
         )
 
         if (isCompleted) {
-            Text(
-                text = "DONE",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                color = Color(0xFFFFC107)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "DONE",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFFFC107)
+                )
+                RavenMascot(state = RavenState.ACHIEVEMENT, modifier = Modifier.size(24.dp))
+            }
         }
     }
 }

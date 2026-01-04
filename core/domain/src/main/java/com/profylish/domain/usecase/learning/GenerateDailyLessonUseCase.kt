@@ -19,6 +19,7 @@ class GenerateDailyLessonUseCase @Inject constructor(
 
         val baseCefr = mapLevelIdToCefr(levelId)
 
+        // Kategori ismini veritabanı tipine çevir
         val dbType = when(category) {
             "TERM" -> "Term"
             "IDIOM" -> "Idiom"
@@ -27,112 +28,110 @@ class GenerateDailyLessonUseCase @Inject constructor(
             else -> "Term"
         }
 
-        val words = dictionaryRepository.getWordsForLesson(profession, baseCefr, dbType)
-        if (words.isEmpty()) return emptyList()
+        // 1. Havuzdan kelimeleri çek (Yeterli sayıda çekmeye çalışıyoruz)
+        val allWords = dictionaryRepository.getWordsForLesson(profession, baseCefr, dbType)
+
+        if (allWords.isEmpty()) return emptyList()
 
         val questions = mutableListOf<QuizQuestion>()
 
         when (dbType) {
+            // --- TERMINOLOGY: Eşleştirme (Matching) ---
             "Term" -> {
-                words.chunked(4).forEach { group ->
-                    if (group.size >= 2) {
-                        questions.add(QuizQuestion(
-                            id = group.first().id.toString(),
-                            type = QuestionType.MATCHING_PAIRS,
-                            questionText = "Match the terms with their definitions",
-                            matchingPairs = group.map { it.word to it.definition },
-                            explanation = "Terminology is key to professionalism!"
-                        ))
+                // Eşleştirme için en az 4 kelime lazım (2 soru x 2 çift).
+                // İdeal olan 10 kelime (5 soru x 2 çift).
+                if (allWords.size >= 4) {
+                    val pool = allWords.shuffled()
+                    // 2'şerli gruplara ayır. Her grup bir "Eşleştirme Sorusu" olur.
+                    // Örneğin 10 kelime -> 5 grup -> 5 Soru.
+                    pool.chunked(2).forEach { group ->
+                        if (group.size == 2) {
+                            questions.add(QuizQuestion(
+                                id = group.first().id.toString(), // ID temsili
+                                type = QuestionType.MATCHING_PAIRS,
+                                questionText = "Match the terms with their definitions",
+                                // List<Pair<String, String>>
+                                matchingPairs = group.map { it.word to it.definition },
+                                explanation = "Terminology is key!"
+                            ))
+                        }
                     }
                 }
-                if (questions.isEmpty()) createMCQuestions(words, questions)
+                // Çok az kelime varsa mecburen Çoktan Seçmeli (MC)
+                else {
+                    val targetWords = allWords.shuffled().take(5)
+                    targetWords.forEach { targetWord ->
+                        val options = (allWords.filter { it.id != targetWord.id }.shuffled().take(3).map { it.word } + targetWord.word)
+                            .map { it.trim() }.distinct().shuffled()
+
+                        val correctIndex = options.indexOf(targetWord.word.trim())
+                        if (correctIndex != -1) {
+                            questions.add(QuizQuestion(
+                                id = targetWord.id.toString(),
+                                type = QuestionType.MULTIPLE_CHOICE,
+                                questionText = "Which term matches this definition?\n\n\"${targetWord.definition}\"",
+                                options = options,
+                                correctAnswerIndex = correctIndex,
+                                explanation = "${targetWord.word}: ${targetWord.definition}"
+                            ))
+                        }
+                    }
+                }
             }
 
+            // --- ACRONYM: Doğru/Yanlış ---
             "Acronym" -> {
-                words.forEach { word ->
+                val targetWords = allWords.shuffled().take(5)
+                targetWords.forEach { targetWord ->
                     val isCorrect = Random.nextBoolean()
-                    val displayedDef = if (isCorrect) word.definition
-                    else words.filter { it.id != word.id }.randomOrNull()?.definition ?: "Unknown concept"
+                    val displayedDef = if (isCorrect) targetWord.definition
+                    else allWords.filter { it.id != targetWord.id }.randomOrNull()?.definition ?: "Unknown concept"
 
                     questions.add(QuizQuestion(
-                        id = word.id.toString(),
+                        id = targetWord.id.toString(),
                         type = QuestionType.TRUE_FALSE,
-                        questionText = "Does \"${word.word}\" stand for:\n\n\"$displayedDef\"?",
+                        questionText = "Does \"${targetWord.word}\" stand for:\n\n\"$displayedDef\"?",
                         options = listOf("True", "False"),
                         correctAnswerIndex = if (isCorrect) 0 else 1,
-                        explanation = "${word.word}: ${word.definition}"
+                        explanation = "${targetWord.word} stands for ${targetWord.definition}"
                     ))
                 }
             }
 
+            // --- IDIOM & PHRASAL VERB: Boşluk Doldurma ---
             "Idiom", "Phrasal Verb" -> {
-                words.forEach { word ->
-                    val rawSentence = word.exampleSentence ?: "${word.word} is commonly used in professional meetings."
+                val targetWords = allWords.shuffled().take(5)
+                targetWords.forEach { targetWord ->
+                    val rawSentence = targetWord.exampleSentence ?: "${targetWord.word} is commonly used in professional meetings."
 
-                    // 1. Kelimeyi (büyük/küçük harf duyarsız) bul ve boşluk yap
                     var blankedSentence = rawSentence.replace(
-                        Regex("\\b${Regex.escape(word.word)}\\b", RegexOption.IGNORE_CASE),
+                        Regex("\\b${Regex.escape(targetWord.word)}\\b", RegexOption.IGNORE_CASE),
                         "________"
                     )
 
-                    // 2. Eğer kelime çekimlenmişse (örn: 'setting up' vs 'Set up') ve değişmediyse,
-                    //    soruyu 'Tanım' sorusuna çevir. Cevabı açık etme.
                     if (blankedSentence == rawSentence) {
-                        blankedSentence = "Complete the phrase for this definition:\n\n\"${word.definition}\"\n\n________"
+                        blankedSentence = "Complete the phrase for this definition:\n\n\"${targetWord.definition}\"\n\n________"
                     }
 
-                    // 3. Şıkları hazırla, temizle ve TEKRARLARI ÖNLE (.distinct())
-                    val distractors = words.filter { it.id != word.id }
-                        .shuffled()
-                        .take(3)
-                        .map { it.word }
+                    val options = (allWords.filter { it.id != targetWord.id }.shuffled().take(3).map { it.word } + targetWord.word)
+                        .map { it.trim() }.distinct().shuffled()
 
-                    val options = (distractors + word.word)
-                        .map { it.trim() } // Boşlukları temizle
-                        .distinct()        // Aynı şıkkı sil
-                        .shuffled()
-
-                    // Doğru cevabın index'ini bul (trimlenmiş haliyle)
-                    val correctIndex = options.indexOf(word.word.trim())
-
-                    // Eğer distinct yüzünden bir şeyler ters gittiyse ve doğru cevap listede yoksa (çok düşük ihtimal ama güvenlik)
+                    val correctIndex = options.indexOf(targetWord.word.trim())
                     if (correctIndex != -1) {
                         questions.add(QuizQuestion(
-                            id = word.id.toString(),
+                            id = targetWord.id.toString(),
                             type = QuestionType.FILL_IN_THE_BLANK,
                             questionText = blankedSentence,
                             options = options,
                             correctAnswerIndex = correctIndex,
-                            targetWord = word.word,
-                            explanation = "Definition: ${word.definition}"
+                            targetWord = targetWord.word,
+                            explanation = "Definition: ${targetWord.definition}"
                         ))
                     }
                 }
             }
         }
-        return questions
-    }
-
-    private fun createMCQuestions(words: List<com.profylish.model.curriculum.DictionaryWord>, list: MutableList<QuizQuestion>) {
-        words.forEach { w ->
-            val distractors = words.filter { it.id != w.id }.shuffled().take(3).map { it.word }
-            val options = (distractors + w.word)
-                .map { it.trim() }
-                .distinct() // Burada da tekrarı önle
-                .shuffled()
-
-            val correctIndex = options.indexOf(w.word.trim())
-
-            if (correctIndex != -1) {
-                list.add(QuizQuestion(
-                    id = w.id.toString(),
-                    type = QuestionType.MULTIPLE_CHOICE,
-                    questionText = "Which term matches this definition?\n\n${w.definition}",
-                    options = options,
-                    correctAnswerIndex = correctIndex
-                ))
-            }
-        }
+        return questions.take(5)
     }
 
     private fun mapLevelIdToCefr(levelId: String): String = when(levelId) {

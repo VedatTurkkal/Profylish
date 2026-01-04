@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,7 +27,8 @@ import com.profylish.onboarding.welcome.WelcomeScreen
 @Composable
 fun OnboardingGraph(
     onOnboardingFinished: (String) -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel() // ViewModel Inject edildi
 ) {
     val navController = rememberNavController()
 
@@ -66,7 +68,7 @@ fun OnboardingGraph(
             composable("welcome") {
                 WelcomeScreen(
                     onGetStarted = { navController.navigate("search") },
-                    onLoginClicked = onNavigateToLogin // Parametreyi buraya bağladık
+                    onLoginClicked = onNavigateToLogin
                 )
             }
 
@@ -91,7 +93,12 @@ fun OnboardingGraph(
                 LevelSelectionScreen(
                     occupationId = occupationId,
                     occupationGroup = occupationGroup,
-                    onOnboardingFinished = onOnboardingFinished
+                    onOnboardingFinished = { jobTitle ->
+                        // ViewModel üzerinden kaydet
+                        viewModel.completeOnboarding(jobTitle)
+                        // Sonra navigasyonu tetikle
+                        onOnboardingFinished(jobTitle)
+                    }
                 )
             }
         }

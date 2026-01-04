@@ -72,10 +72,32 @@ class QuizViewModel @Inject constructor(
                         isVibrationEnabled = vibrationEnabled
                     )
                 } else {
-                    _uiState.value = QuizUiState.Error("No content found for $quizCategory in Level $levelId.")
+                    _uiState.value = QuizUiState.Error("No content found for $quizCategory.")
                 }
             } catch (e: Exception) {
                 _uiState.value = QuizUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun onMatchingCompleted() {
+        val currentState = _uiState.value
+        if (currentState is QuizUiState.Success) {
+            val newScore = currentState.score + 20
+
+            _uiState.value = currentState.copy(
+                score = newScore,
+                isAnswerChecked = true,
+                isAnswerCorrect = true,
+                comboStreak = currentState.comboStreak + 1
+            )
+
+            viewModelScope.launch {
+                if (currentState.isVibrationEnabled) {
+                    _navigationEvent.send(QuizNavigationEvent.VibrateSuccess)
+                }
+                delay(800)
+                onNextQuestion()
             }
         }
     }
@@ -90,32 +112,10 @@ class QuizViewModel @Inject constructor(
     fun onCheckAnswer() {
         val currentState = _uiState.value
         if (currentState is QuizUiState.Success) {
+            if (currentState.currentQuestion.type == QuestionType.MATCHING_PAIRS) return
 
-            // --- MATCHING PAIRS ---
-            if (currentState.currentQuestion.type == QuestionType.MATCHING_PAIRS) {
-                val newScore = currentState.score + 20
-                viewModelScope.launch {
-                    if (currentState.isVibrationEnabled) _navigationEvent.send(QuizNavigationEvent.VibrateSuccess)
-                }
-                _uiState.value = currentState.copy(
-                    isAnswerChecked = true,
-                    isAnswerCorrect = true,
-                    score = newScore
-                )
-                return
-            }
-
-            // --- DİĞER SORU TİPLERİ ---
             if (currentState.selectedOptionIndex != null) {
-
-                // --- SAĞLAM KONTROL ---
-                // Sadece index'e güvenmek yerine metinleri de kontrol ediyoruz.
-                // Çünkü veri tabanında "Set up " (boşluklu) olabilir.
-                val selectedText = currentState.currentQuestion.options[currentState.selectedOptionIndex].trim()
-                val correctText = currentState.currentQuestion.options[currentState.currentQuestion.correctAnswerIndex].trim()
-
                 val isCorrect = currentState.selectedOptionIndex == currentState.currentQuestion.correctAnswerIndex
-                        || selectedText.equals(correctText, ignoreCase = true)
 
                 viewModelScope.launch {
                     if (currentState.isVibrationEnabled) {
@@ -127,29 +127,17 @@ class QuizViewModel @Inject constructor(
 
                 val newHearts = if (!isCorrect) (currentState.hearts - 1).coerceAtLeast(0) else currentState.hearts
                 val isDepleted = newHearts == 0
-
                 val newCombo = if (isCorrect) currentState.comboStreak + 1 else 0
-                val showAnim = isCorrect && newCombo >= 2
 
                 _uiState.value = currentState.copy(
                     isAnswerChecked = true,
                     isAnswerCorrect = isCorrect,
                     score = if (isCorrect) currentState.score + 10 else currentState.score,
                     comboStreak = newCombo,
-                    showComboAnim = showAnim,
                     hearts = newHearts,
-                    isHeartsDepleted = isDepleted
+                    isHeartsDepleted = isDepleted,
+                    showComboAnim = isCorrect && newCombo >= 2
                 )
-
-                if (showAnim) {
-                    viewModelScope.launch {
-                        delay(1500)
-                        val current = _uiState.value
-                        if (current is QuizUiState.Success) {
-                            _uiState.value = current.copy(showComboAnim = false)
-                        }
-                    }
-                }
             }
         }
     }
@@ -177,13 +165,12 @@ class QuizViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState !is QuizUiState.Success) return
 
-        val totalPossible = currentState.totalQuestions * 10
-        val percentage = if (totalPossible > 0) (currentState.score.toFloat() / totalPossible) * 100 else 0f
-        val passed = percentage >= 70 || (currentState.questions.any { it.type == QuestionType.MATCHING_PAIRS } && currentState.score > 0)
+        val passed = currentState.score > 0
 
         viewModelScope.launch {
             if (passed) {
                 userDataRepository.updateUserStats(xpEarned = currentState.score, gemsEarned = 15)
+
                 if (isProgression) {
                     userDataRepository.unlockNextLevel()
                 }
@@ -193,11 +180,11 @@ class QuizViewModel @Inject constructor(
 
                 val userId = authRepository.getCurrentUserId()
                 if (userId != null) {
-                    val wordIdsUsedInLesson = currentState.questions.mapNotNull {
-                        it.id.toString().toIntOrNull()
-                    }
+                    val wordIdsUsedInLesson = currentState.questions.mapNotNull { it.id.toString().toIntOrNull() }
                     dictionaryRepository.markWordsAsLearned(userId, wordIdsUsedInLesson)
                 }
+
+                delay(300)
 
                 if (!authRepository.isUserLoggedIn()) {
                     _navigationEvent.send(QuizNavigationEvent.NavigateToAuth)

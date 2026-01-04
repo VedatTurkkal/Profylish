@@ -1,21 +1,17 @@
 package com.profylish.home
 
-// Android OS ve Titreşim Importları
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-
-// Compose Animasyon Importları
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-
-// Compose UI ve Layout Importları
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,14 +21,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-
-// Material 3 Importları
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-
-// Runtime ve Lifecycle Importları
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,38 +38,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
-// Proje içi bileşenler
 import com.profylish.home.components.LessonSelectionBottomSheet
 import com.profylish.model.roadmap.NodeStatus
 import com.profylish.model.roadmap.RoadmapNode
 import com.profylish.ui.components.GamifiedTopBar
+import com.profylish.ui.components.RavenMascot
+import com.profylish.ui.components.RavenState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    // Navigasyon: levelId, profession, category
     onLessonClick: (String, String, String) -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToChat: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // SnackbarHostState (Hata mesajlarını göstermek için)
     val hostState = remember { SnackbarHostState() }
-
-    // Özel kilitli mesajı animasyon state'i
     var showLockedMessage by remember { mutableStateOf(false) }
-
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val context = LocalContext.current
-
     var selectedLevelId by remember { mutableStateOf<String?>(null) }
 
-    // Locked mesajını 2 saniye sonra otomatik kapatan mantık
     LaunchedEffect(showLockedMessage) {
         if (showLockedMessage) {
             delay(2000)
@@ -114,62 +98,92 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize()) {
 
-            // Roadmap düğümlerini 5'erli ünitelere (UNIT) bölüyoruz
-            val units = remember(uiState.nodes) { uiState.nodes.chunked(5) }
+            if (uiState.isLoading) {
+                // Loading sırasında düşünen Raven
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    RavenMascot(state = RavenState.THINKING, modifier = Modifier.size(100.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator()
+                }
+            } else {
+                val units = remember(uiState.nodes) { uiState.nodes.chunked(5) }
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(bottom = 100.dp)
-            ) {
-                units.forEachIndexed { index, nodesInUnit ->
-                    val unitNumber = index + 1
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .background(MaterialTheme.colorScheme.background),
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
 
+                    // LİSTENİN BAŞINA KARŞILAMA RAVEN'I EKLİYORUZ
                     item {
-                        UnitHeader(
-                            unitNumber = unitNumber,
-                            description = "Section $unitNumber",
-                            color = getUnitColor(unitNumber)
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            RavenMascot(
+                                state = RavenState.ROADMAP, // veya WELCOME
+                                modifier = Modifier.size(120.dp)
+                            )
+                            Text(
+                                text = "Let's learn something new!",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
-                    itemsIndexed(nodesInUnit) { nodeIndex, node ->
-                        val offsetX = when (nodeIndex % 4) {
-                            1 -> (-40).dp
-                            3 -> 40.dp
-                            else -> 0.dp
+                    units.forEachIndexed { index, nodesInUnit ->
+                        val unitNumber = index + 1
+
+                        item {
+                            UnitHeader(
+                                unitNumber = unitNumber,
+                                description = "Section $unitNumber",
+                                color = getUnitColor(unitNumber)
+                            )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            LessonNodeItem(
-                                node = node,
-                                offsetX = offsetX,
-                                unitColor = getUnitColor(unitNumber),
-                                onClick = {
-                                    if (node.status == NodeStatus.LOCKED) {
-                                        if (uiState.isVibrationEnabled) {
-                                            vibrateDevice(context)
+                        itemsIndexed(nodesInUnit) { nodeIndex, node ->
+                            val offsetX = when (nodeIndex % 4) {
+                                1 -> (-40).dp
+                                3 -> 40.dp
+                                else -> 0.dp
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                LessonNodeItem(
+                                    node = node,
+                                    offsetX = offsetX,
+                                    unitColor = getUnitColor(unitNumber),
+                                    onClick = {
+                                        if (node.status == NodeStatus.LOCKED) {
+                                            if (uiState.isVibrationEnabled) {
+                                                vibrateDevice(context)
+                                            }
+                                            showLockedMessage = true
+                                        } else {
+                                            selectedLevelId = node.id
                                         }
-                                        showLockedMessage = true
-                                    } else {
-                                        selectedLevelId = node.id
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // --- CUSTOM LOCKED NOTIFICATION (Aşağıdan fırlayan bildirim) ---
+            // --- RAVEN İLE SÜSLENMİŞ KİLİTLİ MESAJI ---
             AnimatedVisibility(
                 visible = showLockedMessage,
                 enter = slideInVertically(
@@ -195,15 +209,20 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                     ) {
+                        // Kilit ikonu yerine uyaran/öğreten Raven (veya kilit ikonu kalsın ama Raven yanında olsun)
+                        // Yer darlığından dolayı burada ikon daha iyi olabilir, ama Raven'ı denemek isterseniz:
+                        /*
+                        RavenMascot(state = RavenState.CONFUSED, modifier = Modifier.size(40.dp))
+                        */
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
                             tint = Color(0xFFFF5252),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Locked! Complete previous levels first.",
+                            text = "Complete previous levels first!",
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                         )
@@ -213,19 +232,16 @@ fun HomeScreen(
         }
     }
 
-    // --- CATEGORY SELECTION BOTTOM SHEET ---
     if (selectedLevelId != null) {
         val clickedLevelInt = selectedLevelId!!.toIntOrNull() ?: 1
 
         LessonSelectionBottomSheet(
             clickedLevelId = clickedLevelInt,
             userLevel = uiState.level,
-            // uiState içindeki Map'ten o seviyeye ait bitmiş kategorileri çekiyoruz
             completedCategories = uiState.completedCategoriesByLevel[clickedLevelInt] ?: emptySet(),
             onDismiss = { selectedLevelId = null },
             onCategorySelected = { category ->
                 if (uiState.hearts > 0) {
-                    // Navigasyon: levelId, profession, category (TERM, IDIOM vb.)
                     onLessonClick(selectedLevelId!!, uiState.profession, category)
                     selectedLevelId = null
                 } else {
@@ -327,6 +343,7 @@ fun getUnitColor(unitNumber: Int): Color {
     return colors[(unitNumber - 1) % colors.size]
 }
 
+@SuppressLint("MissingPermission")
 fun vibrateDevice(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager

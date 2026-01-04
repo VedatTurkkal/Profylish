@@ -1,5 +1,6 @@
 package com.profylish.data.repository
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.profylish.data.mapper.toDomain
 import com.profylish.domain.repository.CurriculumRepository
@@ -14,7 +15,7 @@ import io.github.jan.supabase.postgrest.query.Columns
 import javax.inject.Inject
 import kotlinx.serialization.Serializable
 
-// Sadece grup ismini çekmek için basit bir model
+@SuppressLint("UnsafeOptInUsageError")
 @Serializable
 data class RoadmapOccupationDto(
     val ONET_Title_Group: String? = null

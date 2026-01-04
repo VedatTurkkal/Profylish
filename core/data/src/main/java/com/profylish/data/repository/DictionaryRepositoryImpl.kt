@@ -8,6 +8,7 @@ import com.profylish.domain.repository.DictionaryRepository
 import com.profylish.model.curriculum.DictionaryWord
 import com.profylish.network.model.dictionary.NetworkDictionaryEntry
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import javax.inject.Inject
@@ -17,6 +18,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WordProgressDto(@SerialName("word_id") val wordId: Int)
 
+// This DTO is used for insertion to ensure type safety
 @Serializable
 data class InsertWordProgressDto(
     @SerialName("user_id") val userId: String,
@@ -30,11 +32,10 @@ class DictionaryRepositoryImpl @Inject constructor(
 
     override suspend fun getWordsForLesson(
         profession: String,
-        cefrLevel: String, // "B1", "B2", "C1", "C2" veya Onboarding metni
+        cefrLevel: String,
         wordType: String
     ): List<DictionaryWord> {
         return try {
-            // Onboarding'den gelen tecrübe seviyelerini DB seviyeleriyle eşleştiriyoruz
             val targetLevels = when (cefrLevel) {
                 "I'm Starting from Scratch", "B1" -> listOf("B1", "B2")
                 "I Have Some Knowledge", "B2" -> listOf("B2", "C1")
@@ -54,7 +55,6 @@ class DictionaryRepositoryImpl @Inject constructor(
                 }
                 .decodeList<NetworkDictionaryEntry>()
 
-            // Eğer sonuç boşsa "Business" genel kategorisinden getir (Fallback)
             if (result.isEmpty()) {
                 val fallbackResult = supabaseClient.postgrest["dictionary"]
                     .select {
@@ -83,22 +83,34 @@ class DictionaryRepositoryImpl @Inject constructor(
                 }
                 .decodeList<WordProgressDto>()
                 .map { it.wordId }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
 
     override suspend fun markWordsAsLearned(userId: String, wordIds: List<Int>) {
         if (wordIds.isEmpty()) return
+
+        // Create a list of DTO objects instead of Maps
+        val progressUpdates = wordIds.map { wordId ->
+            InsertWordProgressDto(
+                userId = userId,
+                wordId = wordId,
+                isMastered = true
+            )
+        }
+
         try {
-            val entries = wordIds.map { InsertWordProgressDto(userId, it) }
-            supabaseClient.postgrest["user_word_progress"].upsert(entries)
+            // FIX: Pass 'onConflict' directly as a parameter string
+            supabaseClient.from("user_word_progress").upsert(
+                value = progressUpdates,
+                onConflict = "user_id, word_id"
+            )
         } catch (e: Exception) {
-            Log.e("QUIZ_DEBUG", "Failed to mark words: ${e.message}")
+            e.printStackTrace()
         }
     }
 
-    // Geriye dönük uyumluluk için eski metot
     override suspend fun getWordsForLevel(
         profession: String,
         cefrLevel: String,

@@ -2,17 +2,16 @@ package com.profylish.profylish.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+// Raven Imports
+import com.profylish.ui.components.RavenMascot
+import com.profylish.ui.components.RavenState
 
 @Composable
 fun NoInternetScreen() {
@@ -20,15 +19,15 @@ fun NoInternetScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.WifiOff,
-            contentDescription = "No Internet",
-            modifier = Modifier.size(100.dp),
-            tint = MaterialTheme.colorScheme.error
+        // Replaced Icon with Raven
+        RavenMascot(
+            state = RavenState.CONFUSED,
+            modifier = Modifier.size(180.dp)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -42,7 +41,7 @@ fun NoInternetScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Profylish requires an active internet connection to load your personalized lessons. Please check your settings.",
+            text = "I can't reach the server right now. Check your internet connection so we can continue learning!",
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -50,8 +49,6 @@ fun NoInternetScreen() {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Kullanıcı interneti açtığında otomatik algılayacağı için butona gerek yok
-        // ama görsel olarak 'Waiting...' diyebiliriz.
         CircularProgressIndicator(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(32.dp)

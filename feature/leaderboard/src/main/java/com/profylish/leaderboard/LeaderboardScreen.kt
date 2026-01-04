@@ -18,6 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.profylish.leaderboard.components.LeaderboardItem
 import com.profylish.leaderboard.components.LeagueHeader
 import com.profylish.leaderboard.components.PromotionZone
+import com.profylish.ui.components.RavenMascot
+import com.profylish.ui.components.RavenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,9 +29,6 @@ fun LeaderboardScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    // SESSİZ YENİLEME TETİKLEYİCİSİ
-    // Ekran her göründüğünde (Profil'den veya Lesson'dan dönünce) veriyi yenile
-    // AMA Loading gösterme (isInitialLoad = false)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.fetchLeaderboardData(isInitialLoad = false)
     }
@@ -52,7 +51,20 @@ fun LeaderboardScreen(
         ) {
             when (val state = uiState) {
                 is LeaderboardUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    // Sadece dönen bir şey yerine, düşünen bir Raven
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        RavenMascot(
+                            state = RavenState.THINKING, // veya STATS
+                            modifier = Modifier.size(120.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Loading ranks...", style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
 
                 is LeaderboardUiState.Error -> {
@@ -60,6 +72,11 @@ fun LeaderboardScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Hata durumunda kafası karışık Raven
+                        RavenMascot(
+                            state = RavenState.CONFUSED,
+                            modifier = Modifier.size(120.dp)
+                        )
                         Text(
                             text = state.message,
                             color = MaterialTheme.colorScheme.error,
@@ -73,6 +90,9 @@ fun LeaderboardScreen(
 
                 is LeaderboardUiState.Success -> {
                     Column(modifier = Modifier.fillMaxSize()) {
+
+                        // Eğer liste boşsa veya çok az kişi varsa motive edici bir Raven koyulabilir
+                        // Ancak burada liste dolu olduğu için Header ve Liste devam ediyor.
 
                         LeagueHeader(
                             tierName = state.tier.name,
@@ -88,15 +108,13 @@ fun LeaderboardScreen(
                             item {
                                 PromotionZone(
                                     message = "Top 3 promote to next league!",
-                                    color = Color(0xFF4CAF50) // Green
+                                    color = Color(0xFF4CAF50)
                                 )
                             }
 
                             items(state.entries) { entry ->
-                                // Item içinde artık profil fotoğrafı gösteriliyor
                                 LeaderboardItem(entry = entry)
 
-                                // Promosyon Çizgileri
                                 when (entry.rank) {
                                     3 -> {
                                         PromotionZone(
@@ -107,7 +125,7 @@ fun LeaderboardScreen(
                                     (state.entries.size - 5).coerceAtLeast(4) -> {
                                         PromotionZone(
                                             message = "Demotion Zone",
-                                            color = Color(0xFFE53935) // Red
+                                            color = Color(0xFFE53935)
                                         )
                                     }
                                 }

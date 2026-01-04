@@ -39,7 +39,7 @@ fun LevelSelectionScreen(
                 title = title,
                 subtitle = subtitle,
                 onClick = {
-                    viewModel.saveUserPreference(jobTitle = occupationId)
+                    viewModel.completeOnboarding(jobTitle = occupationId)
 
                     onOnboardingFinished(occupationId)
                 }

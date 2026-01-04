@@ -28,6 +28,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    // XP Sorunu Çözümü 1: SharingStarted.Eagerly yaparak ekran açılır açılmaz veriyi dinlemeye zorluyoruz.
     val uiState: StateFlow<ProfileUiState> = combine(
         userDataRepository.userData,
         authRepository.authState
@@ -38,7 +39,7 @@ class ProfileViewModel @Inject constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = SharingStarted.Eagerly,
         initialValue = ProfileUiState(isLoggedIn = authRepository.isUserLoggedIn())
     )
 
@@ -50,9 +51,11 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             if (authRepository.isUserLoggedIn()) {
                 try {
+                    // XP Sorunu Çözümü 2: Buluttan veriyi zorla çekiyoruz.
+                    userDataRepository.syncLocalDataToCloud()
                     userDataRepository.restoreFromCloud()
                 } catch (e: Exception) {
-                    // Sessizce başarısız olabilir veya loglanabilir
+                    e.printStackTrace()
                 }
             }
         }
@@ -60,15 +63,10 @@ class ProfileViewModel @Inject constructor(
 
     fun updateUsername(newName: String) {
         viewModelScope.launch {
-            try {
-                userDataRepository.updateUsername(newName)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            userDataRepository.updateUsername(newName)
         }
     }
 
-    // YENİ: Galeriden seçilen resmi işler
     fun onAvatarSelected(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
@@ -87,6 +85,7 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // Bu fonksiyon Settings ekranından çağırılacak, o yüzden uyarıyı dikkate alma.
     fun signOut() {
         viewModelScope.launch {
             authRepository.signOut()
@@ -94,6 +93,7 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // Bu fonksiyon Settings ekranından çağırılacak.
     fun updateSettings(vibration: Boolean, darkMode: Boolean, notifications: Boolean) {
         viewModelScope.launch {
             userDataRepository.updateSettings(vibration, darkMode, notifications)

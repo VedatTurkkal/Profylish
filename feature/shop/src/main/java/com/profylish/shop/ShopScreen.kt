@@ -1,7 +1,9 @@
 package com.profylish.shop
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,9 +22,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.revenuecat.purchases.ui.revenuecatui.Paywall
 import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
-// Eğer kütüphane sürümü eskiyse bu import hata verir.
-// Şimdilik CustomerCenter'ı kaldırıp basit bir dialog ile değiştiriyorum ki derlensin.
-// Sürümü yükselttiğinde tekrar ekleyebilirsin.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +59,6 @@ fun ShopScreen(
         }
     }
 
-    // Customer Center Dialog (Basitleştirilmiş)
     if (showCustomerCenter) {
         AlertDialog(
             onDismissRequest = { showCustomerCenter = false },
@@ -75,8 +73,9 @@ fun ShopScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background) // DÜZELTME: Tema Arkaplanı
     ) {
+        // --- HEADER ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,14 +84,15 @@ fun ShopScreen(
         ) {
             Text(
                 text = "Shop",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, color = Color.Gray),
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), // DÜZELTME
                 modifier = Modifier.align(Alignment.Center)
             )
 
             Surface(
-                color = Color(0xFFE5F6FD),
+                color = MaterialTheme.colorScheme.surfaceVariant, // DÜZELTME
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF1CB0F6))
+                border = BorderStroke(2.dp, Color(0xFF1CB0F6))
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -109,7 +109,7 @@ fun ShopScreen(
             }
         }
 
-        HorizontalDivider(color = Color(0xFFE5E5E5), thickness = 2.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
@@ -119,6 +119,7 @@ fun ShopScreen(
                 Text(
                     text = "Subscription",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground, // DÜZELTME
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
@@ -155,6 +156,7 @@ fun ShopScreen(
                 Text(
                     text = "Power-ups",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground, // DÜZELTME
                     modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
                 )
             }
@@ -201,8 +203,8 @@ fun ShopItemCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFE5E5E5))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), // DÜZELTME: Tema Surface
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant) // DÜZELTME: Tema Outline
     ) {
         Row(
             modifier = Modifier
@@ -222,9 +224,17 @@ fun ShopItemCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface // DÜZELTME
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant // DÜZELTME
+                )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -232,7 +242,7 @@ fun ShopItemCard(
             if (isPurchased && buttonText == null) {
                 Text(
                     text = "FULL",
-                    color = Color(0xFFE5E5E5),
+                    color = MaterialTheme.colorScheme.outline, // DÜZELTME
                     fontWeight = FontWeight.Bold
                 )
             } else {
@@ -241,13 +251,17 @@ fun ShopItemCard(
                     enabled = (canAfford || buttonText != null) && !isPurchased && buttonText != "ACTIVE",
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (buttonText != null && buttonText != "ACTIVE") Color(0xFF1CB0F6) else Color(0xFF58CC02),
-                        disabledContainerColor = Color(0xFFE5E5E5)
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 0.dp)
                 ) {
                     if (buttonText != null) {
-                        Text(text = buttonText, fontWeight = FontWeight.Bold, color = if(buttonText == "ACTIVE") Color.Gray else Color.White)
+                        Text(
+                            text = buttonText,
+                            fontWeight = FontWeight.Bold,
+                            color = if(buttonText == "ACTIVE") MaterialTheme.colorScheme.onSurfaceVariant else Color.White
+                        )
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("💎", fontSize = 12.sp)

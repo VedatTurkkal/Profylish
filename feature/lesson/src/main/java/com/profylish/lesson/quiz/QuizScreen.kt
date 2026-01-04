@@ -7,34 +7,24 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.profylish.lesson.model.QuizUiState
-import com.profylish.model.lesson.QuestionType
-import kotlinx.coroutines.delay
+import com.profylish.lesson.quiz.components.QuizContent
+import com.profylish.lesson.summary.LessonCompletedView
+import com.profylish.ui.components.RavenMascot
+import com.profylish.ui.components.RavenState
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -85,14 +75,15 @@ fun QuizScreen(
         }
     }
 
-    // --- GAME OVER DIALOG ---
-    // Kalpler bittiyse bunu göster
+    // --- DIALOGS ---
     if (uiState is QuizUiState.Success && (uiState as QuizUiState.Success).isHeartsDepleted) {
         AlertDialog(
             onDismissRequest = { onBackClick() },
             title = { Text(text = "Out of Hearts!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
             text = { Text("You made too many mistakes. Practice makes perfect, try again later!", color = MaterialTheme.colorScheme.onSurface) },
-            icon = { Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = {
+                RavenMascot(state = RavenState.CONFUSED, modifier = Modifier.size(60.dp))
+            },
             confirmButton = {
                 Button(
                     onClick = { onBackClick() },
@@ -140,7 +131,6 @@ fun QuizScreen(
         )
     }
 
-    // DARK MODE FIX: containerColor = MaterialTheme.colorScheme.background
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState) {
@@ -162,12 +152,15 @@ fun QuizScreen(
 
                         LessonCompletedView(score = state.score, passed = passed, onContinueClick = { viewModel.onLessonFinished() })
                     } else {
+                        // --- DÜZELTME BURADA ---
+                        // onMatchingCompleted parametresi eklendi
                         QuizContent(
                             state = state,
                             onOptionSelected = viewModel::onOptionSelected,
                             onCheckAnswer = viewModel::onCheckAnswer,
                             onNextQuestion = viewModel::onNextQuestion,
-                            onCloseClick = { showQuitDialog = true }
+                            onCloseClick = { showQuitDialog = true },
+                            onMatchingCompleted = viewModel::onMatchingCompleted // BURASI EKLENDİ
                         )
 
                         AnimatedVisibility(
@@ -197,365 +190,6 @@ fun QuizScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun QuizContent(
-    state: QuizUiState.Success,
-    onOptionSelected: (Int) -> Unit,
-    onCheckAnswer: () -> Unit,
-    onNextQuestion: () -> Unit,
-    onCloseClick: () -> Unit
-) {
-    val progress by animateFloatAsState(
-        targetValue = (state.currentQuestionIndex + 1) / state.totalQuestions.toFloat(),
-        label = "ProgressBar"
-    )
-
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        // TOP BAR
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onCloseClick) {
-                // DARK MODE FIX: tint = onSurface
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-            }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(8.dp)),
-                color = Color(0xFF58CC02),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant // Track rengini de temaya bağladık
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Favorite, contentDescription = "Hearts", tint = Color(0xFFFF4B4B))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("${state.hearts}", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF4B4B))
-            }
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            when (state.currentQuestion.type) {
-                QuestionType.MATCHING_PAIRS -> {
-                    MatchingQuizContent(
-                        pairs = state.currentQuestion.matchingPairs,
-                        onAllMatched = { onCheckAnswer() }
-                    )
-                }
-                else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        when (state.currentQuestion.type) {
-                            QuestionType.FILL_IN_THE_BLANK -> {
-                                Text("Complete the phrase:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                // DARK MODE FIX: containerColor = surfaceVariant
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
-                                ) {
-                                    Text(
-                                        text = state.currentQuestion.questionText,
-                                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                        modifier = Modifier.padding(24.dp),
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurface // Text rengi
-                                    )
-                                }
-                                state.currentQuestion.options.forEachIndexed { index, optionText ->
-                                    QuizOptionCard(
-                                        text = optionText,
-                                        isSelected = state.selectedOptionIndex == index,
-                                        isAnswerChecked = state.isAnswerChecked,
-                                        isCorrectAnswer = index == state.currentQuestion.correctAnswerIndex,
-                                        onClick = { onOptionSelected(index) }
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-                            }
-
-                            QuestionType.TRUE_FALSE -> {
-                                Text(
-                                    text = state.currentQuestion.questionText,
-                                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                                    color = MaterialTheme.colorScheme.onBackground // Text rengi
-                                )
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    state.currentQuestion.options.forEachIndexed { index, optionText ->
-                                        val color = if(optionText == "True") Color(0xFF58CC02) else Color(0xFFEA2B2B)
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            TrueFalseCard(
-                                                text = optionText,
-                                                baseColor = color,
-                                                isSelected = state.selectedOptionIndex == index,
-                                                isAnswerChecked = state.isAnswerChecked,
-                                                onClick = { onOptionSelected(index) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            else -> { // MULTIPLE_CHOICE
-                                Text(
-                                    text = state.currentQuestion.questionText,
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onBackground, // Text rengi
-                                    modifier = Modifier.padding(bottom = 32.dp)
-                                )
-                                state.currentQuestion.options.forEachIndexed { index, optionText ->
-                                    QuizOptionCard(
-                                        text = optionText,
-                                        isSelected = state.selectedOptionIndex == index,
-                                        isAnswerChecked = state.isAnswerChecked,
-                                        isCorrectAnswer = index == state.currentQuestion.correctAnswerIndex,
-                                        onClick = { onOptionSelected(index) }
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (state.currentQuestion.type != QuestionType.MATCHING_PAIRS) {
-            val footerColor = if (state.isAnswerChecked) {
-                if (state.isAnswerCorrect) Color(0xFFD7FFB8) else Color(0xFFFFDFE0) // Bunlar statik kalabilir (renkli geri bildirim)
-            } else {
-                MaterialTheme.colorScheme.background // Check öncesi arka plan
-            }
-
-            // Eğer cevap kontrol edildiyse, text renkleri koyu olmalı çünkü arka plan açık yeşil/kırmızı oluyor.
-            val footerContentColor = if (state.isAnswerChecked) Color.Black else MaterialTheme.colorScheme.onBackground
-
-            Column(modifier = Modifier.fillMaxWidth().background(footerColor).padding(16.dp)) {
-                if (state.isAnswerChecked) {
-                    Row(modifier = Modifier.padding(bottom = 16.dp)) {
-                        val icon = if (state.isAnswerCorrect) "🎉" else "❌"
-                        val title = if (state.isAnswerCorrect) "Excellent!" else "Correct answer:"
-                        Text(text = icon, style = MaterialTheme.typography.headlineSmall)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = if (state.isAnswerCorrect) Color(0xFF58CC02) else Color(0xFFEA2B2B))
-                            if (!state.isAnswerCorrect && state.currentQuestion.options.isNotEmpty()) {
-                                Text(text = state.currentQuestion.options[state.currentQuestion.correctAnswerIndex], style = MaterialTheme.typography.bodyLarge, color = Color(0xFFEA2B2B))
-                            }
-                        }
-                    }
-                }
-
-                Button(
-                    onClick = { if (state.isAnswerChecked) onNextQuestion() else onCheckAnswer() },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    enabled = state.selectedOptionIndex != null,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (state.isAnswerChecked && !state.isAnswerCorrect) Color(0xFFEA2B2B) else Color(0xFF58CC02),
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(text = if (state.isAnswerChecked) "CONTINUE" else "CHECK", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MatchingQuizContent(
-    pairs: List<Pair<String, String>>,
-    onAllMatched: () -> Unit
-) {
-    val leftItems = remember(pairs) { pairs.map { it.first } }
-    val rightItems = remember(pairs) { pairs.map { it.second }.shuffled() }
-
-    var selectedLeft by remember { mutableStateOf<String?>(null) }
-    var selectedRight by remember { mutableStateOf<String?>(null) }
-
-    val matchedLeft = remember { mutableStateListOf<String>() }
-    val matchedRight = remember { mutableStateListOf<String>() }
-
-    LaunchedEffect(selectedLeft, selectedRight) {
-        if (selectedLeft != null && selectedRight != null) {
-            val isCorrect = pairs.any { it.first == selectedLeft && it.second == selectedRight }
-
-            if (isCorrect) {
-                matchedLeft.add(selectedLeft!!)
-                matchedRight.add(selectedRight!!)
-            }
-
-            delay(300)
-            selectedLeft = null
-            selectedRight = null
-
-            if (matchedLeft.size == pairs.size) {
-                onAllMatched()
-            }
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Tap matching pairs", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                leftItems.forEach { item ->
-                    val isMatched = matchedLeft.contains(item)
-                    val isSelected = selectedLeft == item
-                    MatchingCard(text = item, isSelected = isSelected, isMatched = isMatched, onClick = { if (!isMatched) selectedLeft = item })
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-            Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                rightItems.forEach { item ->
-                    val isMatched = matchedRight.contains(item)
-                    val isSelected = selectedRight == item
-                    MatchingCard(text = item, isSelected = isSelected, isMatched = isMatched, isSmallText = true, onClick = { if (!isMatched) selectedRight = item })
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MatchingCard(
-    text: String,
-    isSelected: Boolean,
-    isMatched: Boolean,
-    isSmallText: Boolean = false,
-    onClick: () -> Unit
-) {
-    // DARK MODE FIX
-    val bgColor = when {
-        isMatched -> Color.Transparent
-        isSelected -> Color(0xFFDDF4FF) // Seçiliyken açık mavi kalabilir
-        else -> MaterialTheme.colorScheme.surface // Normalde tema rengi
-    }
-
-    val borderColor = if (isSelected) Color(0xFF1CB0F6) else MaterialTheme.colorScheme.outlineVariant
-
-    // Matched ise gri, değilse (Dark mode ise beyaz, Light ise siyah)
-    val textColor = if (isMatched) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onSurface
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(if (isSmallText) 100.dp else 60.dp)
-            .clickable(enabled = !isMatched && !isSelected) { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = bgColor),
-        border = if (!isMatched) BorderStroke(2.dp, borderColor) else null
-    ) {
-        Box(modifier = Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.Center) {
-            Text(
-                text = text,
-                style = if (isSmallText) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                textAlign = TextAlign.Center,
-                maxLines = if (isSmallText) 4 else 2
-            )
-        }
-    }
-}
-
-@Composable
-fun QuizOptionCard(
-    text: String,
-    isSelected: Boolean,
-    isAnswerChecked: Boolean,
-    isCorrectAnswer: Boolean,
-    onClick: () -> Unit
-) {
-    val borderColor = when {
-        isAnswerChecked && isCorrectAnswer -> Color(0xFF58CC02)
-        isAnswerChecked && isSelected -> Color(0xFFEA2B2B)
-        isSelected -> Color(0xFF1CB0F6)
-        else -> MaterialTheme.colorScheme.outlineVariant // Dark mode border
-    }
-    val backgroundColor = when {
-        isAnswerChecked && isCorrectAnswer -> Color(0xFFD7FFB8)
-        isAnswerChecked && isSelected -> Color(0xFFFFDFE0)
-        isSelected -> Color(0xFFDDF4FF)
-        else -> MaterialTheme.colorScheme.surface // Dark mode bg
-    }
-
-    // Eğer checked değilse ve seçili değilse tema rengi (beyaz/siyah), aksi halde özel renk
-    val textColor = if (!isAnswerChecked && !isSelected) MaterialTheme.colorScheme.onSurface else Color(0xFF4B4B4B)
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, borderColor),
-        color = backgroundColor
-    ) {
-        Text(text, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = textColor)
-    }
-}
-
-@Composable
-fun TrueFalseCard(
-    text: String,
-    baseColor: Color,
-    isSelected: Boolean,
-    isAnswerChecked: Boolean,
-    onClick: () -> Unit
-) {
-    val borderColor = if (isSelected) baseColor else MaterialTheme.colorScheme.outlineVariant
-    val bgColor = if (isSelected) baseColor.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
-    val textColor = if (isSelected) baseColor else MaterialTheme.colorScheme.onSurface
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)).clickable(enabled = !isAnswerChecked, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, borderColor),
-        color = bgColor
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(text, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = textColor)
-        }
-    }
-}
-
-@Composable
-fun LessonCompletedView(score: Int, passed: Boolean, onContinueClick: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val icon = if (passed) "🎉" else "💪"
-        val title = if (passed) "Lesson Complete!" else "Don't give up!"
-        val subtitle = if (passed) "You earned $score XP" else "You need 70% to pass. Try again!"
-        val btnColor = if (passed) Color(0xFF58CC02) else Color.Gray
-
-        Text(icon, style = MaterialTheme.typography.displayLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF58CC02))
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(subtitle, style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFC800))
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onContinueClick, modifier = Modifier.fillMaxWidth(0.8f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = btnColor)) {
-            Text("CONTINUE", color = Color.White)
         }
     }
 }
