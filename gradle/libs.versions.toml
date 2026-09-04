@@ -24,7 +24,7 @@ charty = "2.0.0-alpha01"
 composeNavigation = "2.7.7"
 daggerHilt = "2.51.1"
 composeHiltNavigation = "1.2.0"
-navigationCommonKtx = "2.7.7"
+navigationCommonKtx = "2.10.0"
 
 supabase = "2.6.1"
 ktor = "3.5.2"
