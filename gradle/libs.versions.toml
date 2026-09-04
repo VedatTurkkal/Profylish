@@ -32,7 +32,7 @@ ktor = "2.3.12"
 foundationLayout = "1.6.7"
 uiText = "1.6.7"
 uiTextGoogleFonts = "1.6.7"
-roomKtx = "2.6.1"
+roomKtx = "2.8.4"
 
 revenuecat = "8.4.0"
 coil = "2.6.0"
