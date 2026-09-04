@@ -34,7 +34,7 @@ uiText = "1.6.7"
 uiTextGoogleFonts = "1.6.7"
 roomKtx = "2.8.4"
 
-revenuecat = "8.4.0"
+revenuecat = "10.19.1"
 coil = "2.6.0"
 
 [libraries]
