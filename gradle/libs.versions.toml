@@ -27,7 +27,7 @@ composeHiltNavigation = "1.2.0"
 navigationCommonKtx = "2.7.7"
 
 supabase = "2.6.1"
-ktor = "2.3.12"
+ktor = "3.5.2"
 
 foundationLayout = "1.6.7"
 uiText = "1.6.7"
